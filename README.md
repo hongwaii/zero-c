@@ -5,8 +5,8 @@
 ## 快速开始
 
 ```batch
-git clone <repo>
-cd Windows_C
+git clone git@github.com:hongwaii/zero-c.git
+cd zero-c
 .\build.bat
 ```
 

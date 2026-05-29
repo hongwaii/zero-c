@@ -1,4 +1,4 @@
-# Windows-C
+# zero-c
 
 基于 CMake + LLVM-MinGW 的 Windows 平台 C 语言编译框架，工具链以 zip 形式内置，克隆即用，首次运行将自动解压，请耐心等待。
 

@@ -1,32 +1,43 @@
-# ============================================================
-#  third_party — External / open-source libraries
-# ============================================================
-# Two integration approaches are supported:
-#
-# === APPROACH A: Use the library's own CMakeLists.txt ===
-#   add_subdirectory() invokes the upstream CMake build.
-#   You may set cache variables BEFORE add_subdirectory to
-#   configure feature flags (BUILD_SHARED_LIBS, etc.).
-#
-# === APPROACH B: Compile source files directly ===
-#   Manually list the .c files you need. This gives you full
-#   control over what gets compiled and avoids pulling in
-#   unwanted features or build-system complexity.
-#
-# Pick the approach that fits each library best.
-# ============================================================
 
-# ============================================================
-#  Example A: libcurl — use upstream CMakeLists
-# ============================================================
-# Uncomment to enable:
-#
-# set(BUILD_CURL_EXE OFF CACHE BOOL "Don't build curl.exe")
-# set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libcurl")
-# set(CURL_USE_SCHANNEL ON CACHE BOOL "Use Windows TLS")
-# set(CURL_DISABLE_LDAP ON CACHE BOOL "")
-# set(CURL_DISABLE_LDAPS ON CACHE BOOL "")
-# add_subdirectory(libcurl)
+######################## mbedtls start ########################
+# mbedtls功能裁剪选项（官方CMake支持的参数）
+option(ENABLE_PROGRAMS "Build Mbed TLS programs." OFF)                     # mbedtls示例程序
+option(ENABLE_TESTING "Build Mbed TLS tests." OFF)                         # TEST
+option(GEN_FILES "Generate the auto-generated files as needed" ON)         # 是否生成自动化的源文件
+
+set(USE_STATIC_MBEDTLS_LIBRARY OFF CACHE BOOL "Build Mbed TLS static library." FORCE)
+set(USE_SHARED_MBEDTLS_LIBRARY ON CACHE BOOL "Build Mbed TLS shared library." FORCE)
+set(LINK_WITH_PTHREAD OFF CACHE BOOL "Explicitly link Mbed TLS library to pthread." FORCE)
+set(LINK_WITH_TRUSTED_STORAGE OFF CACHE BOOL "Explicitly link Mbed TLS library to trusted_storage." FORCE)
+
+#添加子目录
+add_subdirectory(mbedtls-4.1.0)  #mbedtls-4.1.0
+
+######################## mbedtls   end ########################
+
+######################## libcurl start ########################
+#libcurl功能裁剪
+set(BUILD_CURL_EXE OFF CACHE BOOL "Don't build curl.exe")
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libcurl")
+set(CURL_USE_SCHANNEL ON CACHE BOOL "Use Windows TLS")
+set(CURL_DISABLE_LDAP ON CACHE BOOL "")
+set(CURL_DISABLE_LDAPS ON CACHE BOOL "")
+option(CURL_USE_LIBPSL "Use libpsl" OFF)
+option(CURL_WITH_HTTP "Build with HTTP support" ON)                         # HTTP
+option(CURL_WITH_FTP "Build with FTP support" ON)                           # FTP
+option(CURL_WITH_MBEDTLS "Build with SSL support" ON)                       # mbedtls
+option(BUILD_TESTING "Build curl test programs" OFF)                        # TEST
+# 只编译动态库
+set(BUILD_SHARED_LIBS ON CACHE BOOL "Build curl shared" FORCE)
+set(BUILD_CURL_EXE OFF CACHE BOOL "Build curl executable" FORCE)
+set(BUILD_STATIC_LIBS OFF CACHE BOOL "Build curl static" FORCE)
+
+#添加子目录
+add_subdirectory(libcurl)
+
+######################## libcurl   end ########################
+
+
 # add_library(third_libcurl ALIAS libcurl)
 # # (The target name depends on what the upstream CMakeLists defines.
 # #  Common names: libcurl, CURL::libcurl, or just curl.)

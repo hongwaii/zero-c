@@ -114,7 +114,6 @@ if not exist "%MINGW_PATH%\gcc.exe" (
     powershell -Command "Expand-Archive -Path '%MINGW_ZIP%' -DestinationPath '%TOOLS_DIR%' -Force"
     if not exist "%MINGW_PATH%\gcc.exe" (
         echo [ERROR] Extraction failed: %MINGW_PATH%\gcc.exe
-        pause
         exit /b 1
     )
     echo [SETUP] MinGW extracted.
@@ -126,7 +125,6 @@ if not exist "%CMAKE_BIN%\cmake.exe" (
     powershell -Command "Expand-Archive -Path '%CMAKE_ZIP%' -DestinationPath '%TOOLS_DIR%' -Force"
     if not exist "%CMAKE_BIN%\cmake.exe" (
         echo [ERROR] Extraction failed: %CMAKE_BIN%\cmake.exe
-        pause
         exit /b 1
     )
     echo [SETUP] CMake extracted.
@@ -138,7 +136,6 @@ echo [ERROR] MinGW not found:
 echo   gcc.exe: %MINGW_PATH%\gcc.exe
 echo   Zip:     %MINGW_ZIP%
 echo Please place the zip at the path above and re-run.
-pause
 exit /b 1
 
 :no_cmake_zip
@@ -146,7 +143,6 @@ echo [ERROR] CMake not found:
 echo   cmake.exe: %CMAKE_BIN%\cmake.exe
 echo   Zip:       %CMAKE_ZIP%
 echo Please place the zip at the path above and re-run.
-pause
 exit /b 1
 
 :tools_ok
@@ -220,7 +216,6 @@ if not errorlevel 1 goto :cmake_config_ok
 echo.
 echo [ERROR] CMake configuration failed!
 cd /d "%ROOT_DIR%"
-pause
 exit /b 1
 :cmake_config_ok
 
@@ -234,7 +229,6 @@ if not errorlevel 1 goto :build_ok
 echo.
 echo [ERROR] Build failed!
 cd /d "%ROOT_DIR%"
-pause
 exit /b 1
 :build_ok
 
@@ -244,17 +238,17 @@ REM ============================================================
 cd /d "%ROOT_DIR%"
 
 if not "%BUILD_MODE%"=="test" goto :done_app
-if exist "%OUT_DIR%\%TEST_TARGET%" goto :print_test
+if exist "%OUT_DIR%\TEST\%TEST_TARGET%" goto :print_test
 goto :done_end
 :done_app
-if exist "%OUT_DIR%\%APP_TARGET%" goto :print_app
+if exist "%OUT_DIR%\%PRODUCT_NAME%\%APP_TARGET%" goto :print_app
 goto :done_end
 
 :print_test
 echo.
 echo ============================================================
 echo  BUILD SUCCESS
-echo  Output: %OUT_DIR%\%TEST_TARGET%
+echo  Output: %OUT_DIR%\TEST\%TEST_TARGET%
 echo ============================================================
 goto :done_end
 
@@ -262,7 +256,7 @@ goto :done_end
 echo.
 echo ============================================================
 echo  BUILD SUCCESS
-echo  Output: %OUT_DIR%\%APP_TARGET%
+echo  Output: %OUT_DIR%\%PRODUCT_NAME%\%APP_TARGET%
 echo ============================================================
 goto :done_end
 

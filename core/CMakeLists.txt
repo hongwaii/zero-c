@@ -33,9 +33,10 @@ add_executable(${PRODUCT_NAME}
     ${CORE_HEADERS}
 )
 
-# ---- Output location: project root (so APP-1.1.0.xxx.exe lands there) ----
+# ---- Output location: out/<ProductName>/ ----
+set(APP_DIST_DIR "${PROJ_OUT_DIR}/${PRODUCT_NAME}")
 set_target_properties(${PRODUCT_NAME} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${PROJ_OUT_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "${APP_DIST_DIR}"
     OUTPUT_NAME "${FULL_TAG}"
 )
 

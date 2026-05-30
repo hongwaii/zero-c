@@ -31,9 +31,10 @@ add_executable(TEST
     ${TEST_HEADERS}
 )
 
-# ---- Output to project root as TEST.exe ----
+# ---- Output location: out/TEST/ ----
+set(TEST_DIST_DIR "${PROJ_OUT_DIR}/TEST")
 set_target_properties(TEST PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${PROJ_OUT_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "TEST"
 )
 
@@ -41,15 +42,27 @@ set_target_properties(TEST PROPERTIES
 target_include_directories(TEST PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/include
-    # TODO: Add module include paths for testing, e.g.:
-    # ${CMAKE_SOURCE_DIR}/midware/http
+    # Third-party library headers
+    ${CMAKE_SOURCE_DIR}/third_party/mbedtls-4.1.0/include
+    ${CMAKE_SOURCE_DIR}/third_party/mbedtls-4.1.0/tf-psa-crypto/include
+    ${CMAKE_SOURCE_DIR}/third_party/mbedtls-4.1.0/tf-psa-crypto/drivers/builtin/include
+    ${CMAKE_SOURCE_DIR}/third_party/libcurl/include
 )
 
 # ---- Link libraries ----
 target_link_libraries(TEST PRIVATE
-    # TODO: Link the modules you want to test, e.g.:
-    # midware_http
-    # my_static_lib
+    # mbedtls
+    mbedtls
+    mbedx509
+    tfpsacrypto
+
+    # libcurl
+    libcurl_shared
+
+    # System libs (Windows)
+    ws2_32
+    crypt32
+    bcrypt
 )
 
 # ---- Compiler flags ----
@@ -61,4 +74,21 @@ target_compile_options(TEST PRIVATE
 target_compile_definitions(TEST PRIVATE
     -DTEST_MODE
     # TODO: Additional test defines
+)
+
+# ---- Post-build: copy runtime DLLs to dist directory ----
+add_custom_command(TARGET TEST POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:mbedtls>"
+        "${TEST_DIST_DIR}/"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:mbedx509>"
+        "${TEST_DIST_DIR}/"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:tfpsacrypto>"
+        "${TEST_DIST_DIR}/"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:libcurl_shared>"
+        "${TEST_DIST_DIR}/"
+    COMMENT "Copying runtime DLLs to TEST dist directory..."
 )

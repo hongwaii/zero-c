@@ -111,6 +111,19 @@ int main(void)
     test_get_string();
     test_atomic_write();
     test_get_helpers();
+
+    /* 幂等性回归测试：连续 3 次写到同一路径都必须成功。
+     * 保护 Windows 上 rename() 因目标已存在而失败的 bug 不再回归。 */
+    {
+        const char *path = ROUNDTRIP_PATH;
+        cJSON *r = cJSON_CreateObject();
+        cJSON_AddNumberToObject(r, "iter", 1);
+        CHECK(json_save_file_atomic(path, r) == AGENT_OK, "幂等：第 1 次 save 返回 OK");
+        CHECK(json_save_file_atomic(path, r) == AGENT_OK, "幂等：第 2 次 save 返回 OK");
+        CHECK(json_save_file_atomic(path, r) == AGENT_OK, "幂等：第 3 次 save 返回 OK");
+        cJSON_Delete(r);
+    }
+
     if (g_failed == 0) {
         printf("test_json_roundtrip: %d/%d pass\n", g_checks, g_checks);
         return 0;

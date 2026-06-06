@@ -37,6 +37,10 @@ add_subdirectory(libcurl)
 
 ######################## libcurl   end ########################
 
+######################## imgui start ########################
+add_subdirectory(imgui)
+######################## imgui   end ########################
+
 ######################## cJSON start ########################
 set(CJSON_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/cjson/cJSON.c
@@ -47,13 +51,10 @@ target_include_directories(third_cjson PUBLIC
 )
 ######################## cJSON   end ########################
 
-
-# add_library(third_libcurl ALIAS libcurl)
-# # (The target name depends on what the upstream CMakeLists defines.
-# #  Common names: libcurl, CURL::libcurl, or just curl.)
-#
 ######################## libuv start ########################
 # libuv vendored under third_party/libuv (cloned in Task 1)
+# All sources are Windows-only (libuv/src/win/*); guarded by WIN32.
+if (WIN32)
 set(LIBUV_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/fs-poll.c
     ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/idna.c
@@ -98,8 +99,8 @@ target_include_directories(third_libuv PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src
 )
 target_compile_definitions(third_libuv PRIVATE
-    -DWIN32_LEAN_AND_MEAN
-    -D_WIN32_WINNT=0x0600
+    WIN32_LEAN_AND_MEAN
+    _WIN32_WINNT=0x0600
 )
 target_link_libraries(third_libuv PUBLIC
     ws2_32
@@ -107,8 +108,9 @@ target_link_libraries(third_libuv PUBLIC
     userenv
     iphlpapi
 )
+endif()  # WIN32
 ######################## libuv   end ########################
-#
+
 # ============================================================
 #  Example: OpenSSL — choose your approach
 # ============================================================

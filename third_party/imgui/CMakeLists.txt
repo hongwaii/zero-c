@@ -43,5 +43,4 @@ target_compile_options(${MODULE_NAME} PRIVATE
     -Wno-missing-field-initializers
     -Wno-unused-parameter
     -Wno-sign-compare
-    -Wno-extra
 )

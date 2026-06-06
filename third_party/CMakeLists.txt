@@ -37,69 +37,77 @@ add_subdirectory(libcurl)
 
 ######################## libcurl   end ########################
 
+######################## cJSON start ########################
+set(CJSON_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/cjson/cJSON.c
+)
+add_library(third_cjson STATIC ${CJSON_SOURCES})
+target_include_directories(third_cjson PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/cjson
+)
+######################## cJSON   end ########################
+
 
 # add_library(third_libcurl ALIAS libcurl)
 # # (The target name depends on what the upstream CMakeLists defines.
 # #  Common names: libcurl, CURL::libcurl, or just curl.)
 #
-# ============================================================
-#  Example B: libuv — compile source files directly
-# ============================================================
-# Uncomment to enable:
-#
-# set(LIBUV_SOURCES
-#     libuv/src/fs-poll.c
-#     libuv/src/idna.c
-#     libuv/src/inet.c
-#     libuv/src/random.c
-#     libuv/src/strscpy.c
-#     libuv/src/threadpool.c
-#     libuv/src/timer.c
-#     libuv/src/uv-common.c
-#     libuv/src/uv-data-getter-setters.c
-#     libuv/src/version.c
-#     # Windows-specific sources
-#     libuv/src/win/async.c
-#     libuv/src/win/core.c
-#     libuv/src/win/detect-wakeup.c
-#     libuv/src/win/dl.c
-#     libuv/src/win/error.c
-#     libuv/src/win/fs.c
-#     libuv/src/win/fs-event.c
-#     libuv/src/win/getaddrinfo.c
-#     libuv/src/win/getnameinfo.c
-#     libuv/src/win/handle.c
-#     libuv/src/win/loop-watcher.c
-#     libuv/src/win/pipe.c
-#     libuv/src/win/poll.c
-#     libuv/src/win/process.c
-#     libuv/src/win/process-stdio.c
-#     libuv/src/win/signal.c
-#     libuv/src/win/snprintf.c
-#     libuv/src/win/stream.c
-#     libuv/src/win/tcp.c
-#     libuv/src/win/thread.c
-#     libuv/src/win/tty.c
-#     libuv/src/win/udp.c
-#     libuv/src/win/util.c
-#     libuv/src/win/winapi.c
-#     libuv/src/win/winsock.c
-# )
-# add_library(third_libuv STATIC ${LIBUV_SOURCES})
-# target_include_directories(third_libuv PUBLIC
-#     ${CMAKE_CURRENT_SOURCE_DIR}/libuv/include
-#     ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src
-# )
-# target_compile_definitions(third_libuv PRIVATE
-#     -DWIN32_LEAN_AND_MEAN
-#     -D_WIN32_WINNT=0x0600
-# )
-# target_link_libraries(third_libuv PUBLIC
-#     ws2_32
-#     psapi
-#     userenv
-#     iphlpapi
-# )
+######################## libuv start ########################
+# libuv vendored under third_party/libuv (cloned in Task 1)
+set(LIBUV_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/fs-poll.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/idna.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/inet.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/random.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/strscpy.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/threadpool.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/timer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/uv-common.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/uv-data-getter-setters.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/version.c
+    # Windows-specific sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/async.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/core.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/detect-wakeup.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/dl.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/error.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/fs.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/fs-event.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/getaddrinfo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/getnameinfo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/handle.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/loop-watcher.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/pipe.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/poll.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/process.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/process-stdio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/signal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/snprintf.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/stream.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/tcp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/thread.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/tty.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/udp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/util.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/winapi.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src/win/winsock.c
+)
+add_library(third_libuv STATIC ${LIBUV_SOURCES})
+target_include_directories(third_libuv PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/libuv/src
+)
+target_compile_definitions(third_libuv PRIVATE
+    -DWIN32_LEAN_AND_MEAN
+    -D_WIN32_WINNT=0x0600
+)
+target_link_libraries(third_libuv PUBLIC
+    ws2_32
+    psapi
+    userenv
+    iphlpapi
+)
+######################## libuv   end ########################
 #
 # ============================================================
 #  Example: OpenSSL — choose your approach

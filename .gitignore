@@ -40,3 +40,5 @@ Thumbs.db
 
 # Third-party: ignore upstream ImGui sources, keep our wrapper
 third_party/imgui/imgui/
+third_party/libuv/
+third_party/cjson/

@@ -111,3 +111,18 @@ set_target_properties(test_strbuf PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_strbuf"
 )
+
+# test_json_roundtrip — json_reader + json_writer roundtrip unit tests
+add_executable(test_json_roundtrip test_json_roundtrip.c)
+target_link_libraries(test_json_roundtrip PRIVATE
+    lib_util
+)
+target_include_directories(test_json_roundtrip PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/util
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_json_roundtrip PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_json_roundtrip"
+)

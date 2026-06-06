@@ -6,7 +6,8 @@ set(MODULE_NAME lib_util)
 set(MY_SOURCES
     strbuf.c
     errstr.c
-    # json_reader.c, json_writer.c added in later tasks
+    json_reader.c
+    json_writer.c
 )
 
 add_library(${MODULE_NAME} STATIC ${MY_SOURCES})

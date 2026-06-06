@@ -38,3 +38,15 @@ if (WIN32)
 endif()
 
 target_compile_options(${PRODUCT_NAME} PRIVATE -Wall -Wextra)
+
+# ---- Copy LLVM-MinGW runtime DLLs next to the EXE (safety net) ----
+# Even though we static-link libc++/libunwind in app/shell/CMakeLists.txt, some
+# transitive dependency (a third-party .lib) might still be dynamic. This step
+# guarantees the EXE finds its runtime DLLs on Windows.
+add_custom_command(TARGET ${PRODUCT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/tools/llvm-mingw-20260519-ucrt-x86_64/bin/libc++.dll"
+        "${CMAKE_SOURCE_DIR}/tools/llvm-mingw-20260519-ucrt-x86_64/bin/libunwind.dll"
+        $<TARGET_FILE_DIR:${PRODUCT_NAME}>
+    COMMENT "Copying libc++ / libunwind runtime DLLs to $<TARGET_FILE_DIR:${PRODUCT_NAME}>"
+)

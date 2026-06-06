@@ -23,3 +23,16 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     third_imgui
     third_cjson
 )
+
+# Static-link C++ runtime to avoid DLL dependencies on libc++.dll / libunwind.dll.
+# ImGui + DX11 backend are C++ targets, so without this LLVM-MinGW produces an EXE
+# that requires libc++.dll and libunwind.dll to be present next to the EXE at runtime.
+target_link_options(${MODULE_NAME} PRIVATE
+    -static
+    -static-libgcc
+    -static-libstdc++
+    -Wl,-Bstatic
+    -l:libc++.a
+    -l:libunwind.a
+    -Wl,-Bdynamic
+)

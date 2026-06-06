@@ -1,6 +1,8 @@
 /**
  * @file panel_ota.cpp
- * @brief OTA 升级 panel——P1 仅占位。
+ * @brief OTA 升级 panel：P1 占位，v1.2 推出。
+ *
+ * 留作架构占位（spec §4.4 OtaService 是 stub），UI 仅显示提示。
  */
 #include "panel_ota.h"
 #include "i18n.h"

@@ -1,6 +1,8 @@
 /**
  * @file panel_prod.cpp
- * @brief 产线测试 panel——P1 仅占位。
+ * @brief 产线测试 panel：P1 占位，v1.1 推出。
+ *
+ * 留作架构占位（spec §4.4 ProductionService 是 stub），UI 仅显示提示。
  */
 #include "panel_prod.h"
 #include "i18n.h"

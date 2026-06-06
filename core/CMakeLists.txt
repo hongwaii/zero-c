@@ -25,6 +25,21 @@ target_link_libraries(${PRODUCT_NAME} PRIVATE
     third_libuv
 )
 
+# Static-link C++ runtime to avoid DLL dependencies on libc++.dll / libunwind.dll.
+# The final EXE link is what actually resolves the import libraries, so the static
+# link flags MUST be applied to this target (not just the static-lib app_shell).
+# ImGui + DX11 backend are C++ targets, so without this LLVM-MinGW produces an EXE
+# that requires libc++.dll and libunwind.dll to be present next to the EXE at runtime.
+target_link_options(${PRODUCT_NAME} PRIVATE
+    -static
+    -static-libgcc
+    -static-libstdc++
+    -Wl,-Bstatic
+    -l:libc++.a
+    -l:libunwind.a
+    -Wl,-Bdynamic
+)
+
 # Win32 libraries needed by app_shell / ImGui backends
 if (WIN32)
     target_link_libraries(${PRODUCT_NAME} PRIVATE
@@ -40,9 +55,9 @@ endif()
 target_compile_options(${PRODUCT_NAME} PRIVATE -Wall -Wextra)
 
 # ---- Copy LLVM-MinGW runtime DLLs next to the EXE (safety net) ----
-# Even though we static-link libc++/libunwind in app/shell/CMakeLists.txt, some
-# transitive dependency (a third-party .lib) might still be dynamic. This step
-# guarantees the EXE finds its runtime DLLs on Windows.
+# Even though we static-link libc++/libunwind at the final EXE link step above,
+# some transitive dependency (a third-party .lib) might still be dynamic. This
+# step guarantees the EXE finds its runtime DLLs on Windows.
 add_custom_command(TARGET ${PRODUCT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_SOURCE_DIR}/tools/llvm-mingw-20260519-ucrt-x86_64/bin/libc++.dll"

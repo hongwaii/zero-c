@@ -17,6 +17,13 @@ set(IMGUI_SOURCES
 
 add_library(${MODULE_NAME} STATIC ${IMGUI_SOURCES})
 
+# ImGui is fundamentally C++; the top-level project is C-only, so enable CXX
+# here and force the linker to use C++ rules.
+enable_language(CXX)
+set_target_properties(${MODULE_NAME} PROPERTIES
+    LINKER_LANGUAGE CXX
+)
+
 target_include_directories(${MODULE_NAME} PUBLIC
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends

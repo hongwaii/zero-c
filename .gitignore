@@ -37,3 +37,6 @@ Thumbs.db
 
 # AI agent
 .claude
+
+# Third-party: ignore upstream ImGui sources, keep our wrapper
+third_party/imgui/imgui/

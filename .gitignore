@@ -46,3 +46,6 @@ third_party/cjson/
 # CJK font assets (user drops cn.otf here; do not commit binaries)
 assets/fonts/*.otf
 assets/fonts/*.ttf
+
+# ImGui 运行时在 cwd 生成的状态文件
+imgui.ini

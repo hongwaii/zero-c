@@ -13,6 +13,16 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 
+#include "theme.h"
+/* i18n 是 C 源文件，对应的头文件没有 extern "C" 包裹；
+ * 在 C++ TU 中引用 C 符号时必须显式包一层，否则链接期符号名不匹配。 */
+extern "C" {
+#include "i18n.h"
+}
+
+/* 主题与 i18n：theme_apply 在 ImGui 上下文创建后立即调用；theme_load_fonts
+ * 在 ImGui backend init 之后、第一次 NewFrame 之前；i18n_init 紧随其后。 */
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
 
 struct host_ctx {
@@ -126,6 +136,13 @@ int host_create(host_ctx_t **out, const char *title, int width, int height)
     ImGui_ImplWin32_Init(c->hwnd);
     ImGui_ImplDX11_Init(c->device, c->ctx);
 
+    /* 主题：上下文创建后立即应用，否则字体加载前的首帧会用默认色。 */
+    theme_apply(AGENT_THEME_ENGINEERING_BLUE);
+    /* 字体：在 backend init 之后、第一次 NewFrame 之前。 */
+    theme_load_fonts();
+    /* i18n：UI 字符串源。 */
+    i18n_init(AGENT_LANG_ZH_CN);
+
     ShowWindow(c->hwnd, SW_SHOWDEFAULT);
     UpdateWindow(c->hwnd);
     *out = c;
@@ -162,6 +179,8 @@ void host_destroy(host_ctx_t *c)
     if (!c) return;
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
+    /* 释放 i18n 加载的字符串树。 */
+    i18n_shutdown();
     ImGui::DestroyContext();
     if (c->rtv) c->rtv->Release();
     if (c->swap_chain) c->swap_chain->Release();

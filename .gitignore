@@ -42,3 +42,7 @@ Thumbs.db
 third_party/imgui/imgui/
 third_party/libuv/
 third_party/cjson/
+
+# CJK font assets (user drops cn.otf here; do not commit binaries)
+assets/fonts/*.otf
+assets/fonts/*.ttf

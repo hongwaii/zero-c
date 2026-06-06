@@ -4,7 +4,8 @@ set(MY_SOURCES
     host.cpp
     debug_console.cpp
     i18n.c
-    # theme.c, llm_drawer.c added in later tasks
+    theme.cpp
+    # llm_drawer.c added in later tasks
 )
 
 add_library(${MODULE_NAME} STATIC ${MY_SOURCES})

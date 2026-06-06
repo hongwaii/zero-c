@@ -38,6 +38,10 @@ target_link_options(${PRODUCT_NAME} PRIVATE
     -l:libc++.a
     -l:libunwind.a
     -Wl,-Bdynamic
+    # Make the EXE a Windows GUI subsystem app so no console window is opened
+    # by default. printf/fprintf to stdout/stderr are silently no-op in this
+    # mode unless agent_maybe_open_debug_console() is called at startup.
+    -mwindows
 )
 
 # Win32 libraries needed by app_shell / ImGui backends
@@ -49,6 +53,7 @@ if (WIN32)
         dwmapi
         user32
         gdi32
+        kernel32
     )
 endif()
 

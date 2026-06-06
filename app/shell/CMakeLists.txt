@@ -2,6 +2,7 @@ set(MODULE_NAME app_shell)
 
 set(MY_SOURCES
     host.cpp
+    debug_console.cpp
     # theme.c, llm_drawer.c, i18n.c added in later tasks
 )
 

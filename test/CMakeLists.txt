@@ -126,3 +126,20 @@ set_target_properties(test_json_roundtrip PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_json_roundtrip"
 )
+
+# test_i18n — i18n_get zh-CN JSON loader 单元测试
+add_executable(test_i18n test_i18n.c)
+target_link_libraries(test_i18n PRIVATE
+    app_shell
+    lib_util
+    third_cjson
+)
+target_include_directories(test_i18n PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib/util
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/app/shell
+)
+set_target_properties(test_i18n PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_i18n"
+)

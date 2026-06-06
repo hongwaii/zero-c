@@ -18,6 +18,7 @@ cd zero-c
 |------|------|
 | `.\build.bat` | 编译全部 → `out/APP-1.1.0.YYMMDDHHMM_alpha.exe` |
 | `.\build.bat test` | 编译测试 → `out/TEST.exe` |
+| `.\build.bat shell` | 编译 shell-only（mock 后端，最快迭代） |
 | `.\build.bat clean` | 清理 `out/` |
 | `.\build.bat help` | 显示帮助 |
 

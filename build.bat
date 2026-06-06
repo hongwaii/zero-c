@@ -6,6 +6,7 @@ REM  Windows-C Build Script
 REM    build.bat             Build all   -> APP-<ver>_<type>.exe
 REM    build.bat all         Same as above
 REM    build.bat test        Build test  -> TEST.exe
+REM    build.bat shell       Build shell-only (AGENT_SHELL_ONLY=1, mock backend)
 REM    build.bat clean       Clean out/
 REM    build.bat help        Show this help
 REM ============================================================
@@ -47,6 +48,7 @@ set "ARG1=%~1"
 if "%ARG1%"==""        set "BUILD_MODE=all"   & goto :dispatch_done
 if /i "%ARG1%"=="all"   set "BUILD_MODE=all"   & goto :dispatch_done
 if /i "%ARG1%"=="test"  set "BUILD_MODE=test"  & goto :dispatch_done
+if /i "%ARG1%"=="shell" set "BUILD_MODE=shell" & set "AGENT_SHELL_ONLY=1" & goto :dispatch_done
 if /i "%ARG1%"=="clean" set "BUILD_MODE=clean" & goto :dispatch_done
 if /i "%ARG1%"=="clear" set "BUILD_MODE=clean" & goto :dispatch_done
 if /i "%ARG1%"=="help"  set "BUILD_MODE=help"  & goto :dispatch_done
@@ -71,6 +73,7 @@ echo  USAGE:
 echo    build.bat              Build everything (same as 'all')
 echo    build.bat all          Build everything -^> %APP_TARGET%
 echo    build.bat test         Build test only   -^> %TEST_TARGET%
+echo    build.bat shell        Build shell-only  (AGENT_SHELL_ONLY=1, mock backend)
 echo    build.bat clean        Remove all build artifacts (out/)
 echo    build.bat clear        Same as clean
 echo    build.bat help         Show this help

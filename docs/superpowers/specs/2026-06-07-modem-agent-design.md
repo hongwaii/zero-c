@@ -201,7 +201,7 @@ typedef struct modem_dev {
     { "name": "Qwen",     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1", "api_key": "<DPAPI>", "default_model": "qwen-plus" },
     { "name": "GLM",      "base_url": "https://open.bigmodel.cn/api/paas/v4", "api_key": "<DPAPI>", "default_model": "glm-4-plus" },
     { "name": "Kimi",     "base_url": "https://api.moonshot.cn/v1", "api_key": "<DPAPI>", "default_model": "moonshot-v1-8k" },
-    { "name": "MiniMax",  "base_url": "...", "api_key": "<DPAPI>", "default_model": "MiniMax-Text-01" }
+    { "name": "MiniMax",  "base_url": "<user-supplied endpoint>", "api_key": "<DPAPI>", "default_model": "MiniMax-Text-01" }
   ]
 }
 ```

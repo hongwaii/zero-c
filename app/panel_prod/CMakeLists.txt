@@ -1,0 +1,11 @@
+set(MODULE_NAME app_panel_prod)
+add_library(${MODULE_NAME} STATIC panel.cpp)
+target_include_directories(${MODULE_NAME} PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/app/shell
+)
+target_link_libraries(${MODULE_NAME} PUBLIC
+    app_shell
+    third_imgui
+)

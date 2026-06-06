@@ -1,5 +1,9 @@
 # ============================================================
-#  app/ — UI code (depends on third_imgui)
+#  app/ — UI 代码（依赖 third_imgui）
 # ============================================================
 add_subdirectory(shell)
-# panels added in later tasks
+add_subdirectory(panel_diag)
+add_subdirectory(panel_devices)
+add_subdirectory(panel_prod)
+add_subdirectory(panel_ota)
+add_subdirectory(panel_settings)

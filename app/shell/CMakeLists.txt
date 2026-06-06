@@ -5,7 +5,8 @@ set(MY_SOURCES
     debug_console.cpp
     i18n.c
     theme.cpp
-    # llm_drawer.c added in later tasks
+    main_window.cpp
+    llm_drawer.cpp
 )
 
 add_library(${MODULE_NAME} STATIC ${MY_SOURCES})
@@ -25,6 +26,11 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     lib_util
     third_imgui
     third_cjson
+    app_panel_diag
+    app_panel_devices
+    app_panel_prod
+    app_panel_ota
+    app_panel_settings
 )
 
 # Static-link C++ runtime flags are applied at the final EXE target

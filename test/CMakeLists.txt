@@ -92,3 +92,22 @@ add_custom_command(TARGET TEST POST_BUILD
         "${TEST_DIST_DIR}/"
     COMMENT "Copying runtime DLLs to TEST dist directory..."
 )
+
+# ============================================================
+#  New per-file unit tests (one executable per test file)
+# ============================================================
+
+# test_strbuf — strbuf + errstr unit tests
+add_executable(test_strbuf test_strbuf.c)
+target_link_libraries(test_strbuf PRIVATE
+    lib_util
+)
+target_include_directories(test_strbuf PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/util
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_strbuf PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_strbuf"
+)

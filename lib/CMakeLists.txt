@@ -92,3 +92,6 @@
 # if(SYSTEM_WS2_32)
 #     message(STATUS "Found ws2_32: ${SYSTEM_WS2_32}")
 # endif()
+
+# ---- Internal C libraries (no UI deps) ----
+add_subdirectory(util)

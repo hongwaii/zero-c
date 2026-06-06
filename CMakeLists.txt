@@ -2,7 +2,7 @@
 #  Windows-C Build Framework — Root CMakeLists.txt
 # ============================================================
 cmake_minimum_required(VERSION 3.15)
-project(${PRODUCT_NAME} C)
+project(${PRODUCT_NAME} C CXX)
 
 # ---- C standard ----
 set(CMAKE_C_STANDARD 11)
@@ -66,7 +66,10 @@ add_subdirectory(lib)
 # 3) Middleware modules (may depend on lib + third_party)
 add_subdirectory(midware)
 
-# 4) Core executable (depends on everything above)
+# 4) App modules (UI panels, may depend on lib + midware + third_party)
+add_subdirectory(app)
+
+# 5) Core executable (depends on everything above)
 add_subdirectory(core)
 
 # 5) Test executable (only when BUILD_TEST=ON)

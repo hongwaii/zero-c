@@ -70,6 +70,12 @@ typedef void (*agent_panel_render_fn)(agent_app_t *app);
 #define AGENT_ERR_IO           -4
 #define AGENT_ERR_OOM          -5
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 const char *agent_errstr(int err);
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* AGENT_TYPES_H */

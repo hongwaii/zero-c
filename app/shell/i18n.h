@@ -11,9 +11,17 @@
 #include "agent_types.h"
 struct cJSON;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int  i18n_init(agent_lang_t lang);
 void i18n_shutdown(void);
 const char *i18n_get(const char *key);  /* 找不到时返回 key 字符串 */
 agent_lang_t i18n_current(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

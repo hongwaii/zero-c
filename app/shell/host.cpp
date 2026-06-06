@@ -14,11 +14,7 @@
 #include "imgui_impl_dx11.h"
 
 #include "theme.h"
-/* i18n 是 C 源文件，对应的头文件没有 extern "C" 包裹；
- * 在 C++ TU 中引用 C 符号时必须显式包一层，否则链接期符号名不匹配。 */
-extern "C" {
 #include "i18n.h"
-}
 
 /* 主题与 i18n：theme_apply 在 ImGui 上下文创建后立即调用；theme_load_fonts
  * 在 ImGui backend init 之后、第一次 NewFrame 之前；i18n_init 紧随其后。 */

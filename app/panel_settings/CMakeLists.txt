@@ -1,5 +1,8 @@
 set(MODULE_NAME app_panel_settings)
-add_library(${MODULE_NAME} STATIC panel.cpp)
+add_library(${MODULE_NAME} STATIC
+    panel.cpp
+    seed_llm_providers.cpp
+)
 target_include_directories(${MODULE_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/include

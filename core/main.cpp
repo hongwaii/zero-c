@@ -9,6 +9,7 @@
 #include "debug_console.h"
 #include "version.h"
 #include "agent_types.h"
+#include "panel_settings.h"
 
 static agent_app_t g_app;
 
@@ -29,6 +30,7 @@ int main(void)
     g_app.active_panel = AGENT_PANEL_DIAG;
     g_app.llm_drawer_open = false;
     g_app.providers    = NULL;
+    panel_settings_seed_defaults(&g_app);
 
     host_ctx_t *ctx = NULL;
     if (host_create(&ctx, "Modem Agent", 1280, 800) != 0) {

@@ -15,6 +15,7 @@ set_target_properties(${PRODUCT_NAME} PROPERTIES
 target_include_directories(${PRODUCT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/app/shell
+    ${CMAKE_SOURCE_DIR}/app/panel_settings
 )
 
 target_link_libraries(${PRODUCT_NAME} PRIVATE

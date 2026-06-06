@@ -1,6 +1,8 @@
 /**
  * @file llm_drawer.cpp
- * @brief LLM 抽屉的 mock 实现：P1 仅展示 + 假流式回复，P5 接真模型。
+ * @brief 右侧 LLM 抽屉：disclaimer + 假对话区 + 输入框 + provider 状态摘要。
+ *
+ * P1：纯 mock 流式回复；P5：libcurl 调 OpenAI 兼容 + SSE 流式。
  */
 #include "llm_drawer.h"
 #include "i18n.h"
@@ -9,10 +11,19 @@
 #include <cstring>
 
 /**
- * @brief 抽屉渲染：标题 + disclaimer + 假对话区 + 输入框 + 发送按钮。
- *
- * 假流式效果：点发送后用 snprintf 生成一条 mock 回复，append 到对话区。
- * 真实接入在 P5（libcurl 调 OpenAI 兼容 + SSE 流式）。
+ * @brief 统计已配置的 LLM provider 数量（api_key 非空）。
+ */
+static int count_configured_providers(agent_app_t *app)
+{
+    int n = 0;
+    for (agent_llm_provider_t *p = app->providers; p; p = p->next) {
+        if (p->api_key[0] != '\0') n++;
+    }
+    return n;
+}
+
+/**
+ * @brief 渲染抽屉：disclaimer + 当前 provider 数 + 对话区 + 输入框 + 发送按钮。
  */
 void llm_drawer_render(agent_app_t *app)
 {
@@ -24,13 +35,24 @@ void llm_drawer_render(agent_app_t *app)
 
     ImGui::SetNextWindowSize(ImVec2(420, 0), ImGuiCond_FirstUseEver);
     ImGui::Begin(i18n_get("llm.drawer.title"), &app->llm_drawer_open);
+
     ImGui::TextWrapped("%s", output);
     ImGui::Separator();
+
+    /* provider 状态摘要：5 个里填了几个 key */
+    int total = 0, configured = 0;
+    for (agent_llm_provider_t *p = app->providers; p; p = p->next) total++;
+    configured = count_configured_providers(app);
+    ImGui::Text("LLM providers: %d / %d configured", configured, total);
+
+    ImGui::BeginChild("llm_out", ImVec2(0, -64), true);
+    ImGui::TextWrapped("%s", output);
+    ImGui::EndChild();
+
     ImGui::InputTextWithHint("##llm_in", i18n_get("llm.drawer.placeholder"),
                               input, sizeof(input));
     ImGui::SameLine();
     if (ImGui::Button(i18n_get("llm.drawer.send")) && input[0] != '\0') {
-        /* 假流式：把用户输入 + 一段固定回话塞进 output。 */
         char buf[4096];
         std::snprintf(buf, sizeof(buf),
             "%s\n\nUser: %s\nAI: (mock) 已收到你的问题：%s\n",

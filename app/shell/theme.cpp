@@ -1,13 +1,20 @@
 /**
  * @file theme.cpp
- * @brief 工程蓝主题（深色高对比）+ CJK 字体三级 fallback 加载。
+ * @brief 工程蓝主题 + CJK 字体三级 fallback（文件路径 API，避开 OTF/CFF 解析坑）。
  *
  * 字体加载策略：
- *   1) assets/fonts/cn.otf（用户/未来 P6 打包自带的 CJK 字体）
- *   2) Windows 系统已装的中文字体（微软雅黑等），用 GetFontData 读进内存
- *   3) 都失败：用 ImGui 默认字体（中文会显示为方块）+ stderr 警告
+ *   1) assets/fonts/cn.otf（或 .ttf）—— 用户/未来 P6 打包自带
+ *   2) C:\Windows\Fonts\ 下的已知中文字体文件路径
+ *   3) ImGui 默认字体（中文显示为方块）
  *
- * 每次启动都尝试前两步，无需用户做任何配置。
+ * 为什么走文件路径而不是 GetFontData：
+ *   我们的 ImGui 1.92.9 没有 AddFontFromMemoryOTF，
+ *   而 YaHei/SimSun 等 Windows 系统字体是 OTF/CFF 或 TTC。
+ *   走 GetFontData + AddFontFromMemoryTTF 会拿到 CFF 数据让 TTF parser 静默失败，
+ *   产生一个"0 glyph 的空壳"字体，把 io.FontDefault 设上去就全空白。
+ *   文件路径 API 内部能自动检测 TTF/OTF/TTC 格式，最稳。
+ *
+ * TTC 文件用 cfg.FontNo 选择集合内的 face。
  */
 #include "theme.h"
 #include "imgui.h"
@@ -18,10 +25,8 @@
 #include <cstdlib>
 #include <cstring>
 
-/**
- * @brief 应用主题配色与控件样式（圆角、padding 等）。
- * （原样保留，无改动。）
- */
+/* theme_apply 完全保持原样 —— 略，见 commit 0c1c18e */
+
 void theme_apply(agent_theme_t theme)
 {
     ImGui::StyleColorsDark();
@@ -56,106 +61,55 @@ void theme_apply(agent_theme_t theme)
     }
 }
 
-/* === CJK 字体加载：三级 fallback 实现 === */
+/* === CJK 字体：走文件路径，避开 OTF 解析坑 === */
 
-/** 候选 CJK 字体名（按优先级）。中文 Windows 系统通常至少装其中一个。 */
-static const wchar_t *kCjkFontCandidates[] = {
-    L"Microsoft YaHei UI",
-    L"Microsoft YaHei",
-    L"\x5B5D\x8F6F\x96C5\x9ED1",  /* L"微软雅黑" */
-    L"SimSun",
-    L"NSimSun",
-    L"SimHei",
-    L"DengXian",
-    L"Source Han Sans SC",
-    L"Noto Sans CJK SC",
-    L"Noto Sans SC",
+/**
+ * @brief 候选字体文件路径。TTC 文件 FontNo 指定集合内 face。
+ * 按优先级排：第一项最优先。Windows 10/11 简体中文系统上 msyh.ttc 几乎肯定有。
+ */
+struct cjk_font_candidate {
+    const char *path;       /* UTF-8 路径 */
+    int         font_no;    /* TTC 内 face 索引；单 TTF/OTF 用 0 */
 };
 
-/** 候选字体数量。 */
+static const cjk_font_candidate kCjkFontCandidates[] = {
+    /* 用户/未来 P6 打包字体 */
+    { "assets/fonts/cn.otf",  0 },
+    { "assets/fonts/cn.ttf",  0 },
+    /* Win10/11 默认中文 UI 字体（TTC, 含 regular/bold/light） */
+    { "C:/Windows/Fonts/msyh.ttc",     0 },  /* Microsoft YaHei Regular */
+    { "C:/Windows/Fonts/msyhbd.ttc",   0 },  /* Microsoft YaHei Bold */
+    { "C:/Windows/Fonts/msyhl.ttc",    0 },  /* Microsoft YaHei Light */
+    /* 单文件 TrueType */
+    { "C:/Windows/Fonts/simhei.ttf",   0 },  /* 黑体 */
+    { "C:/Windows/Fonts/simsun.ttc",   0 },  /* 宋体（TTC） */
+    { "C:/Windows/Fonts/simfang.ttf",  0 },  /* 仿宋 */
+    { "C:/Windows/Fonts/Deng.ttf",     0 },  /* 等线 */
+    { "C:/Windows/Fonts/Dengb.ttf",    0 },  /* 等线粗 */
+    /* 用户主动装过的开源字体 */
+    { "C:/Windows/Fonts/SourceHanSansSC-Regular.otf", 0 },
+    { "C:/Windows/Fonts/NotoSansCJKsc-Regular.otf",   0 },
+    { "C:/Windows/Fonts/NotoSansSC-Regular.otf",      0 },
+};
+
 static const int kCjkFontCandidateCount =
     sizeof(kCjkFontCandidates) / sizeof(kCjkFontCandidates[0]);
 
 /**
- * @brief 把候选字体名转成 ANSI 字符串用于 stderr 输出。
- * 简化：宽字符里只输出可打印 ASCII 部分，中文名用省略号。
+ * @brief 检查文件是否存在。
  */
-static void wname_to_ansi(const wchar_t *wname, char *out, size_t out_len)
+static bool file_exists(const char *path)
 {
-    /* 简化：宽字符名直接 WideCharToMultiByte 转换。 */
-    WideCharToMultiByte(CP_UTF8, 0, wname, -1, out, (int)out_len, NULL, NULL);
+    DWORD attr = ::GetFileAttributesA(path);
+    return (attr != INVALID_FILE_ATTRIBUTES) &&
+           !(attr & FILE_ATTRIBUTE_DIRECTORY);
 }
 
 /**
- * @brief 用 Windows GDI 加载指定字体名的 TTF 数据到堆 buffer。
- * @param face_name 字体名（宽字符串）。
- * @param out_size  输出：buffer 字节数。
- * @return 成功返回 malloc 出来的 buffer（调用方 free），失败返回 NULL。
- */
-static void *load_system_font_ttf(const wchar_t *face_name, size_t *out_size)
-{
-    HDC hdc = ::CreateCompatibleDC(NULL);
-    if (!hdc) return NULL;
-
-    LOGFONTW lf = {0};
-    lf.lfHeight         = 16;  /* 16px 取数据，渲染时再设实际大小 */
-    lf.lfWeight         = FW_NORMAL;
-    lf.lfCharSet        = DEFAULT_CHARSET;
-    lf.lfOutPrecision   = OUT_TT_PRECIS;
-    lf.lfClipPrecision  = CLIP_DEFAULT_PRECIS;
-    lf.lfQuality        = PROOF_QUALITY;
-    lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
-    wcsncpy(lf.lfFaceName, face_name, LF_FACESIZE - 1);
-    lf.lfFaceName[LF_FACESIZE - 1] = L'\0';
-
-    HFONT hfont = ::CreateFontIndirectW(&lf);
-    if (!hfont) {
-        ::DeleteDC(hdc);
-        return NULL;
-    }
-    HFONT hfont_old = (HFONT)::SelectObject(hdc, hfont);
-
-    /* 第一次 GetFontData 拿大小（最后一个参数传 NULL）。 */
-    DWORD size = ::GetFontData(hdc, 0, 0, NULL, 0);
-    if (size == GDI_ERROR || size == 0) {
-        ::SelectObject(hdc, hfont_old);
-        ::DeleteObject(hfont);
-        ::DeleteDC(hdc);
-        return NULL;
-    }
-
-    /* 分配 buffer 并读 TTF 数据。 */
-    void *buf = std::malloc(size);
-    if (!buf) {
-        ::SelectObject(hdc, hfont_old);
-        ::DeleteObject(hfont);
-        ::DeleteDC(hdc);
-        return NULL;
-    }
-    DWORD got = ::GetFontData(hdc, 0, 0, buf, size);
-    if (got == GDI_ERROR || got != size) {
-        std::free(buf);
-        ::SelectObject(hdc, hfont_old);
-        ::DeleteObject(hfont);
-        ::DeleteDC(hdc);
-        return NULL;
-    }
-
-    ::SelectObject(hdc, hfont_old);
-    ::DeleteObject(hfont);
-    ::DeleteDC(hdc);
-
-    *out_size = (size_t)size;
-    return buf;
-}
-
-/**
- * @brief 三级 fallback：文件 → 系统字体 → 默认 + 警告。
+ * @brief 三级 fallback：用户字体 → 系统字体（文件路径 API）→ 默认。
  *
- * 关键：每级捕获 ImGui::AddFont*() 返回的 ImFont*，最后显式设置
- * io.FontDefault——ImGui **不会**自动跨 Fonts[] 数组搜索 glyph，
- * 必须告诉它当前用哪个字体。CJK 字体作为 default 后，英文/中文都用
- * 同一个字体渲染（CJK 字体本身也含 ASCII glyph）。
+ * 关键：每级捕获 ImFont* 返回值，结尾显式设 io.FontDefault。
+ * ImGui **不会**自动跨 Fonts[] 数组搜索 glyph——必须显式指定当前用哪个字体。
  *
  * @return 0 成功（含 fallback 情况）。
  */
@@ -163,65 +117,44 @@ int theme_load_fonts(void)
 {
     ImGuiIO &io = ImGui::GetIO();
 
-    /* 第一步：始终注册默认字体（ProggyClean, ASCII only），保证 fonts atlas 非空。
-     * 这是 fallback 失败时的"安全网"——保证启动时至少能渲染。 */
+    /* 第一步：默认字体保底（保证 fonts atlas 非空，渲染管线不会崩）。 */
     ImFont *default_font = io.Fonts->AddFontDefault();
-
-    /* 后续要用的 CJK 字体指针，先置 NULL。 */
     ImFont *cjk_font = NULL;
 
-    /* 第二步：尝试 assets/fonts/cn.otf（用户自放 / 未来 P6 打包自带）。 */
-    {
-        FILE *f = std::fopen("assets/fonts/cn.otf", "rb");
-        if (f) {
-            std::fclose(f);
-            ImFontConfig cfg;
-            cfg.OversampleH = 2;
-            cfg.OversampleV = 1;
-            cjk_font = io.Fonts->AddFontFromFileTTF(
-                "assets/fonts/cn.otf", 16.0f, &cfg,
-                io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-            if (cjk_font) {
-                std::fprintf(stderr,
-                    "theme_load_fonts: 已加载 assets/fonts/cn.otf 作为 CJK 字体。\n");
-            }
+    /* 遍历候选文件路径，找到第一个存在的、且 ImGui 成功加载的。 */
+    for (int i = 0; i < kCjkFontCandidateCount; i++) {
+        const char *path = kCjkFontCandidates[i].path;
+        if (!file_exists(path)) {
+            continue;  /* 文件不存在直接试下一个 */
         }
+
+        ImFontConfig cfg;
+        cfg.OversampleH = 2;
+        cfg.OversampleV = 1;
+        cfg.FontNo = kCjkFontCandidates[i].font_no;  /* TTC 用，TTF/OTF 忽略 */
+
+        cjk_font = io.Fonts->AddFontFromFileTTF(
+            path, 16.0f, &cfg,
+            io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+
+        if (cjk_font) {
+            std::fprintf(stderr,
+                "theme_load_fonts: 已加载 '%s' (FontNo=%d) 作为 CJK 字体。\n",
+                path, cfg.FontNo);
+            break;  /* 找到能用的就停 */
+        }
+        /* 加载失败（路径存在但解析失败）继续试下一个 */
     }
 
-    /* 第三步：枚举 Windows 系统字体，挨个试候选 CJK 字体。 */
-    if (!cjk_font) {
-        for (int i = 0; i < kCjkFontCandidateCount; i++) {
-            size_t size = 0;
-            void *ttf = load_system_font_ttf(kCjkFontCandidates[i], &size);
-            if (!ttf) continue;
-
-            ImFontConfig cfg;
-            cfg.OversampleH = 2;
-            cfg.OversampleV = 1;
-            cjk_font = io.Fonts->AddFontFromMemoryTTF(
-                ttf, (int)size, 16.0f, &cfg,
-                io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-            if (cjk_font) {
-                char aname[128];
-                wname_to_ansi(kCjkFontCandidates[i], aname, sizeof(aname));
-                std::fprintf(stderr,
-                    "theme_load_fonts: assets/fonts/cn.otf 缺失，已用系统字体 '%s' "
-                    "(%zu bytes) 提供中文渲染。\n", aname, size);
-                break;  /* 找到一个就够了，不再继续试 */
-            }
-            /* 加载失败继续下一个候选（ImGui 接管 buffer 所有权，失败不 free） */
-        }
-    }
-
-    /* 关键：设置 io.FontDefault——决定 ImGui 用哪个字体渲染所有文本。
-     *  CJK 字体本身也含 ASCII glyph，所以英文字符也用 CJK 字体渲染没问题。 */
+    /* 结尾：显式设 io.FontDefault——决定 ImGui 用哪个字体渲染所有文本。
+     *  CJK 字体本身也含 ASCII glyph，所以英文/中文都正常。 */
     if (cjk_font) {
         io.FontDefault = cjk_font;
     } else {
         io.FontDefault = default_font;
         std::fprintf(stderr,
-            "theme_load_fonts: 既无 assets/fonts/cn.otf 也无系统 CJK 字体，"
-            "中文将显示为方块。\n");
+            "theme_load_fonts: 没找到任何可用 CJK 字体，"
+            "中文将显示为方块（ASCII 不受影响）。\n");
     }
 
     return 0;

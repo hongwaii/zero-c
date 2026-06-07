@@ -138,7 +138,7 @@ static int open_com_port(const serial_params_t *p)
         full_name,
         GENERIC_READ | GENERIC_WRITE,
         0, NULL, OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
+        FILE_ATTRIBUTE_NORMAL,
         NULL);
     if (h == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "serial_chan: CreateFile(%s) failed: %lu\n",

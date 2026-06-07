@@ -95,3 +95,4 @@
 
 # ---- Internal C libraries (no UI deps) ----
 add_subdirectory(util)
+add_subdirectory(device_manager)

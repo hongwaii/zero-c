@@ -303,3 +303,24 @@ set_target_properties(test_diag_log PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_diag_log"
 )
+
+# test_diag_health — P4 一键健康检查（TEST_MODE：所有子检查走假数据）
+add_executable(test_diag_health test_diag_health.c)
+target_link_libraries(test_diag_health PRIVATE
+    lib_diag_service
+    third_cjson
+    # libuv 链接 dbghelp（SymGetOptions/MiniDumpWriteDump 等）
+    dbghelp
+)
+target_include_directories(test_diag_health PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/diag_service
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_compile_definitions(test_diag_health PRIVATE
+    DIAG_HEALTH_TEST_MODE=1
+)
+set_target_properties(test_diag_health PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_diag_health"
+)

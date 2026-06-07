@@ -6,7 +6,7 @@ add_library(${MODULE_NAME} STATIC
     diag_ssl.c
     diag_sms.c
     diag_log.c
-    # diag_health.c 在后续 task 追加
+    diag_health.c
 )
 target_include_directories(${MODULE_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -26,4 +26,14 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     libcurl_shared
     # diag_log 压 zip 用
     third_miniz
+    # diag_health JSON 报告用
+    third_cjson
 )
+
+# diag_health TEST_MODE：BUILD_TEST=ON 时让 diag_health.c 走假数据路径
+# （test 可不依赖真模组/真网络跑通）
+if (BUILD_TEST)
+    set_source_files_properties(diag_health.c PROPERTIES
+        COMPILE_DEFINITIONS "DIAG_HEALTH_TEST_MODE=1"
+    )
+endif()

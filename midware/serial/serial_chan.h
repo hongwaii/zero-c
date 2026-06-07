@@ -12,7 +12,7 @@
 #include "ringbuf.h"
 #include <uv.h>
 
-typedef struct {
+typedef struct serial_chan {
     modem_chan_t  chan;       /* 基类，impl 强转时第一个字段 */
     uv_tty_t      tty;
     ringbuf_t     rx_ring;    /* HAL 内部 ringbuf：uv 回调写入，AT 引擎读 */

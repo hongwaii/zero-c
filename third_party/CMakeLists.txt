@@ -111,6 +111,23 @@ target_link_libraries(third_libuv PUBLIC
 endif()  # WIN32
 ######################## libuv   end ########################
 
+######################## miniz start ########################
+# miniz vendored under third_party/miniz (单文件 zip 库，约 5000 行)
+# 用途：diag_log 把 30s 抓的 log 文本压成 zip
+set(MINIZ_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/miniz/miniz.c
+)
+add_library(third_miniz STATIC ${MINIZ_SOURCES})
+target_include_directories(third_miniz PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/miniz
+)
+target_compile_definitions(third_miniz PRIVATE
+    MINIZ_NO_ARCHIVE_WRITING_API=0   # 我们需要 zip 写
+    MINIZ_NO_ARCHIVE_READING_API=0   # 健康检查读 log 时可能用
+    MINIZ_NO_STDIO=0                 # 默认开 fopen，方便落盘
+)
+######################## miniz   end ########################
+
 # ============================================================
 #  Example: OpenSSL — choose your approach
 # ============================================================

@@ -2,8 +2,10 @@
  * @file device_manager.c
  * @brief 多模组 manager 实现。
  *
- * 每 2 秒扫描一次：COM 端口（QueryDosDeviceW）+ NCM/RNDIS 网卡（ncm_enumerate）。
+ * 每 0.5 秒扫描一次：modem 类的 COM 端口（SetupDi+GUID_CLASS_MODEM）+ NCM/RNDIS 网卡（ncm_enumerate）。
  * Diff 后增删 modem_dev_t，触发 on_change 回调。
+ *
+ * 只列 GUID_CLASS_MODEM 类的设备——避免 Bluetooth 虚拟串口、其它软件虚拟 COM 等噪音。
  */
 #include "device_manager.h"
 #include "ncm_chan.h"
@@ -13,6 +15,21 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <uv.h>
+#include <setupapi.h>
+#pragma comment(lib, "setupapi.lib")  /* MSVC 提示；MinGW 用 target_link_libraries */
+
+/**
+ * @brief modem 设备类 GUID（手写避免 MinGW/clang 下 DEFINE_GUID 链接 COMDAT 问题）。
+ *
+ * 官方值 GUID_DEVINTERFACE_MODEM = {2C7089AA-2E0E-11D1-B114-00C04FC2AAE4}。
+ * 见 MSDN: System-Defined Device Setup Classes → Modem。
+ * MinGW 的 <ntddmodm.h> 用 DEFINE_GUID 声明，但 selectany COMDAT 在
+ * clang-lld 下链接期找不到——所以这里直接 static const 展开。
+ */
+static const GUID kGuidClassModem = {
+    0x2C7089AA, 0x2E0E, 0x11D1,
+    { 0xB1, 0x14, 0x00, 0xC0, 0x4F, 0xC2, 0xAA, 0xE4 }
+};
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,30 +41,64 @@
 /* === 工具：列 COM 端口 === */
 
 /**
- * @brief 通过 QueryDosDeviceW 列出所有 "COM<n>" 设备名。
+ * @brief 通过 SetupDi 枚举所有"调制解调器"类设备的 COM 端口。
+ *
+ * GUID_CLASS_MODEM 是 Windows 给真模组/调制解调器的设备类 GUID。
+ * 蓝牙虚拟串口、其它软件虚拟 COM 都不在这个类里——避免噪音。
+ *
  * @return 写入 out 的数量（≤ max）
  */
-static int list_com_ports(char out[][8], int max)
+static int list_modem_com_ports(char out[][8], int max)
 {
-    const DWORD buf_size = 64 * 1024;
-    wchar_t *buf = (wchar_t *)malloc(buf_size);
-    if (!buf) return 0;
-    DWORD got = QueryDosDeviceW(NULL, buf, buf_size);
-    if (got == 0) { free(buf); return 0; }
-    int n = 0;
-    wchar_t *p = buf;
-    while (*p && n < max) {
-        if (wcsncmp(p, L"COM", 3) == 0) {
-            /* "COM7" 至 "COM99" 长度 4~5；留 8 字节保险 */
-            char name[8];
-            WideCharToMultiByte(CP_ACP, 0, p, 7, name, sizeof(name), NULL, NULL);
-            name[7] = '\0';
-            strncpy(out[n], name, 8);
-            n++;
-        }
-        p += wcslen(p) + 1;
+    HDEVINFO dev_info = SetupDiGetClassDevsW(&kGuidClassModem, NULL, NULL,
+                                            DIGCF_PRESENT);
+    if (dev_info == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "device_manager: SetupDiGetClassDevs 失败: %lu\n", GetLastError());
+        return 0;
     }
-    free(buf);
+
+    SP_DEVINFO_DATA dev_info_data;
+    dev_info_data.cbSize = sizeof(dev_info_data);
+    int n = 0;
+    for (DWORD i = 0; SetupDiEnumDeviceInfo(dev_info, i, &dev_info_data) && n < max; i++) {
+        /* 取友好名（用于 stderr 调试） */
+        wchar_t friendly[256] = {0};
+        SetupDiGetDeviceRegistryPropertyW(dev_info, &dev_info_data,
+            SPDRP_FRIENDLYNAME, NULL, (PBYTE)friendly, sizeof(friendly), NULL);
+
+        /* 通过注册表查 "PortName"（如 "COM4"）—— 这是 modem 类的标准做法 */
+        HKEY hKey = SetupDiOpenDevRegKey(dev_info, &dev_info_data,
+                                        DICS_FLAG_GLOBAL, 0, DIREG_DRV, KEY_READ);
+        if (hKey == INVALID_HANDLE_VALUE) continue;
+
+        wchar_t portName[32] = {0};
+        DWORD len = sizeof(portName);
+        DWORD type = 0;
+        LONG rc = RegQueryValueExW(hKey, L"PortName", NULL, &type,
+                                  (LPBYTE)portName, &len);
+        RegCloseKey(hKey);
+        if (rc != ERROR_SUCCESS || portName[0] == '\0') continue;
+
+        /* 跳过 "COM" 前缀可能的小写 / 带 "(COMx)" 形式 */
+        const wchar_t *p = portName;
+        if (wcsncmp(p, L"COM", 3) == 0) p += 3;
+        else continue;
+
+        char com_name[8];
+        WideCharToMultiByte(CP_ACP, 0, p, 7, com_name, sizeof(com_name), NULL, NULL);
+        com_name[7] = '\0';
+        if (com_name[0] == '\0') continue;
+
+        strncpy(out[n], com_name, 8);
+        n++;
+
+        /* stderr 调试：可以看到友好名 + 端口号对应关系 */
+        char aname[256];
+        WideCharToMultiByte(CP_UTF8, 0, friendly, 255, aname, sizeof(aname) - 1, NULL, NULL);
+        aname[sizeof(aname) - 1] = '\0';
+        fprintf(stderr, "device_manager: modem found: %s -> COM%s\n", aname, com_name);
+    }
+    SetupDiDestroyDeviceInfoList(dev_info);
     return n;
 }
 
@@ -86,7 +137,7 @@ static void do_scan(uv_timer_t *handle)
     if (!m) return;
 
     char com_now[MAX_SCAN_RESULT][8];
-    int  com_n = list_com_ports(com_now, MAX_SCAN_RESULT);
+    int  com_n = list_modem_com_ports(com_now, MAX_SCAN_RESULT);
 
     ncm_interface_t ncm_now[NCM_MAX_INTERFACES];
     int  ncm_n = ncm_enumerate(ncm_now, NCM_MAX_INTERFACES);
@@ -217,9 +268,11 @@ int device_manager_connect_dev(device_manager_t *m, int dev_idx)
     if (!d->serial) return AGENT_ERR_OOM;
     modem_chan_t *chan = &d->serial->chan;
     if (serial_chan_open(chan, d->chan_uri) != 0) {
+        fprintf(stderr, "device_manager: dev %d (%s) 打开失败——回 DISCONNECTED 让用户重试\n",
+                dev_idx, d->label);
         free(d->serial);
         d->serial = NULL;
-        d->state = DEV_STATE_ERROR;
+        d->state = DEV_STATE_DISCONNECTED;
         return AGENT_ERR_IO;
     }
 
@@ -229,7 +282,7 @@ int device_manager_connect_dev(device_manager_t *m, int dev_idx)
         serial_chan_close(chan);
         free(d->serial);
         d->serial = NULL;
-        d->state = DEV_STATE_ERROR;
+        d->state = DEV_STATE_DISCONNECTED;
         return AGENT_ERR_OOM;
     }
     at_session_open(d->at);

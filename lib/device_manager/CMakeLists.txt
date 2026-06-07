@@ -12,5 +12,6 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     midware_usb_ncm
     midware_serial
     lib_at_engine
+    setupapi              # GUID_CLASS_MODEM / SetupDi* 枚举 modem 设备
     third_libuv
 )

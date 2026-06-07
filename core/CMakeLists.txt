@@ -71,3 +71,18 @@ add_custom_command(TARGET ${PRODUCT_NAME} POST_BUILD
         $<TARGET_FILE_DIR:${PRODUCT_NAME}>
     COMMENT "Copying libc++ / libunwind runtime DLLs to $<TARGET_FILE_DIR:${PRODUCT_NAME}>"
 )
+
+# ---- Copy i18n JSON files next to the EXE (under app/i18n/) ----
+# EXE 启动时 cwd = EXE 所在目录，运行时 i18n_init() 会按 EXE 相对路径
+# out/APP/app/i18n/zh.json 找文件。post-build 把仓库根的 i18n 资源复制到
+# EXE 同目录的 app/i18n/，让运行时 cwd 相对解析能命中。
+# 注意：copy_if_different 不会自动创建父目录，所以先 make_directory。
+# 目前只有 zh.json，en.json 留待 v1.1 再加。
+add_custom_command(TARGET ${PRODUCT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_FILE_DIR:${PRODUCT_NAME}>/app/i18n/"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/app/i18n/zh.json"
+        "$<TARGET_FILE_DIR:${PRODUCT_NAME}>/app/i18n/"
+    COMMENT "Copying i18n files to $<TARGET_FILE_DIR:${PRODUCT_NAME}>/app/i18n/"
+)

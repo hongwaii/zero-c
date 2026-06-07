@@ -55,7 +55,7 @@ static const GUID kGuidClassPorts = {
  * P3 暂不按设备类过滤——CDC-ACM 模组可能注册在任意设备类里，SetupDi 枚举
  * 不一定能找到；不如让用户看到所有端口并通过友好名识别。
  *
- * @param out_com  输出 COM 名数组（"COM4" 等），最多 max 项
+ * @param out_com  输出纯数字端口号数组（"11" 等，已剥掉 "COM" 前缀），最多 max 项
  * @param out_name 输出 label 数组（优先友好名，回退 "COM <n>"），最多 max 项
  * @param max     数组容量
  * @return 实际写入数量
@@ -79,7 +79,12 @@ static int list_com_ports_with_names(char out_com[][8], char out_name[][128], in
             char name[8];
             WideCharToMultiByte(CP_ACP, 0, p, 7, name, sizeof(name), NULL, NULL);
             name[7] = '\0';
-            strncpy(out_com[n], name, 8);
+            /* 剥掉前缀 "COM" 只留数字（"COM11" → "11"），方便 label/id 拼接 */
+            const char *digits = name;
+            if (digits[0] == 'C' && digits[1] == 'O' && digits[2] == 'M') {
+                digits += 3;
+            }
+            strncpy(out_com[n], digits, 8);
             n++;
         }
         p += wcslen(p) + 1;
@@ -222,14 +227,15 @@ static void do_scan(uv_timer_t *handle)
     for (int i = 0; i < com_n && m->dev_count < DEV_MANAGER_MAX_DEVS; i++) {
         modem_dev_t *d = &m->devs[m->dev_count++];
         memset(d, 0, sizeof(*d));
-        snprintf(d->id, sizeof(d->id), "MDM-COM%s", com_now[i]);
-        /* label 优先用友好名（"Quectel Mobile Broadband Modem" 等），回退到 "COM 4" */
+        snprintf(d->id, sizeof(d->id), "MDM-COM%s", com_now[i]);  /* com_now[i] 现在是 "11" → "MDM-COM11" */
+        /* label 优先用友好名（"Quectel Mobile Broadband Modem" 等），回退到 "COM 11"（注意空格 + 数字） */
         if (com_name_now[i][0] != '\0') {
             strncpy(d->label, com_name_now[i], sizeof(d->label) - 1);
         } else {
             snprintf(d->label, sizeof(d->label), "COM %s", com_now[i]);
         }
-        snprintf(d->chan_uri, sizeof(d->chan_uri), "com://%s?baud=115200", com_now[i]);
+        /* chan_uri 需要完整 "COM<n>" 形式，com:// + "COM" + 数字 */
+        snprintf(d->chan_uri, sizeof(d->chan_uri), "com://COM%s?baud=115200", com_now[i]);
         d->state = DEV_STATE_DISCONNECTED;
     }
     for (int i = 0; i < ncm_n && m->dev_count < DEV_MANAGER_MAX_DEVS; i++) {

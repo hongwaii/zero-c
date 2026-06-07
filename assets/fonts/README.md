@@ -1,22 +1,20 @@
 # CJK 字体放置说明
 
-为了让 Modem Agent 正确显示中文 UI（"现场诊断"、"AT 控制台"等），请把 CJK 字体放在**这个目录下**：
+Modem Agent 启动时会**自动按以下三级顺序**加载 CJK 字体：
 
-    assets/fonts/cn.otf
-
-## 推荐字体
-
-- 思源黑体 SC（Source Han Sans SC）Regular 子集或完整版
-- 其它任何含 GB2312 / 简中常用字 的 TTF/OTF
+1. **`assets/fonts/cn.otf`**（用户自放 / v1.0 打包自带）
+2. **Windows 系统已装的中文字体**（微软雅黑 UI / 微软雅黑 / 宋体 / 黑体 / 等线 / 思源黑体 / Noto Sans CJK SC / Noto Sans SC）
+3. **ImGui 默认字体**（中文会显示为方块，仅在前两步都失败时）
 
 ## 不放会怎样？
 
-EXE 仍能启动，但中文会显示为方块（`□`）。程序不会报错。
-启动时如果检测不到 `cn.otf`，会在控制台（如果开了 `AGENT_DEBUG_CONSOLE=1`）打印一行提示。
+不需手动放！EXE 启动时如果没找到 `assets/fonts/cn.otf`，会自动用 Windows 系统的中文字体（微软雅黑等）。
+
+只有当**两步都失败**（极少见：系统连微软雅黑都没装，比如极简 Linux 子系统、特殊 Windows 容器），中文才会显示为方块。stderr 也会打印警告。
 
 ## v1.0 发布时
 
-会自带一个 ~2–3 MB 的 CJK 子集字体（覆盖 `app/i18n/zh.json` 实际用到的 ~1500 字 + AT log 输出字符），避免用户手动放置。
+会自带一个 ~2–3 MB 的 CJK 子集字体（覆盖 `app/i18n/zh.json` 实际用到的 ~1500 字 + AT log 输出字符），避免对系统字体的依赖。
 
 ## 字体文件本身
 

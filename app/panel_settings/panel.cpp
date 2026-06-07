@@ -9,7 +9,12 @@
 #include "i18n.h"
 #include "imgui.h"
 #include "version.h"
+#include "report_html.h"
+#include "sqlite_db.h"
 #include <cstdio>
+/* P4 经验：MinGW 下用 <direct.h> 的 _mkdir 单参版本；<sys/stat.h> 的 POSIX
+ * mkdir 在 MinGW 不可靠。 */
+#include <direct.h>
 
 /* 默认串口波特率，定义在 core/main.cpp（跨模块 extern 共享）。
  * 在这里直接写：用户改 radio 立即生效（不重启），下次 device_manager
@@ -107,4 +112,34 @@ void panel_settings_render(agent_app_t *app)
 
     ImGui::Separator();
     ImGui::Text("%s: %s", i18n_get("settings.version"), APP_VERSION_STRING);
+
+    /* ---- P6: 报告导出 ----
+     * 把当前 sqlite (device + at_log) 导出成 self-contained HTML 报告写到
+     * logs/report.html。仅当 storage_get_db() 返回非 NULL 时按钮才可点——
+     * stub 模式 / 初始化失败时 UI 仍可见但置灰，给用户明确反馈（"DB 未初始化"）。
+     * 导出前先 _mkdir("logs")——首次导出时该目录不存在。状态文本 inline 显示
+     * 成功/失败（不弹 toast，toast 模块还没抽出来；v1.1 改 toast）。 */
+    ImGui::Separator();
+    bool db_ready = (storage_get_db() != NULL);
+    if (!db_ready) ImGui::BeginDisabled();
+    if (ImGui::Button(i18n_get("settings.export_report"))) {
+        _mkdir("logs");  /* 已存在返 -1 忽略 */
+        int rc = report_html_export("logs/report.html");
+        if (rc == 0) {
+            /* 成功：inline 状态文本（不弹窗，最简实现） */
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f),
+                               "%s", i18n_get("settings.export_report_done"));
+        } else {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.4f, 1.0f),
+                               "%s", i18n_get("settings.export_report_failed"));
+        }
+    }
+    if (!db_ready) ImGui::EndDisabled();
+    if (!db_ready) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                           "%s", i18n_get("settings.export_report_no_db"));
+    }
 }

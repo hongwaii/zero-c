@@ -15,14 +15,15 @@
 #include "agent_types.h"
 #include "panel_settings.h"
 
-/* device_manager.h / diag_service.h 是 C 头；本文件是 C++，需 extern "C"
- * 包裹避免符号 mangling。用 extern "C" 块包 include 不会影响内部
- * uv_loop_t * 字段类型（仍按 C 约定解释为指向 C struct 的指针），仅保证
+/* device_manager.h / diag_service.h / sqlite_db.h 是 C 头；本文件是 C++，
+ * 需 extern "C" 包裹避免符号 mangling。用 extern "C" 块包 include 不会影响
+ * 内部 uv_loop_t * 字段类型（仍按 C 约定解释为指向 C struct 的指针），仅保证
  * 函数符号是 C 链接。 */
 extern "C" {
 #include "device_manager.h"
 #include "diag_service.h"
 #include "diag_ssl.h"
+#include "sqlite_db.h"
 }
 
 static agent_app_t g_app;
@@ -62,6 +63,19 @@ int main(void)
      * 时会 seed + save（llm_provider_config_load 内部触发），落盘前需要
      * 这个目录。_mkdir 已存在返回 -1 忽略。MinGW _mkdir 单参版本。 */
     _mkdir("config");
+
+    /* P6: 持久化层启动——确保 data/ 目录存在（SQLite 文件落盘点），
+     * 调 storage_init 打开 agent.db（不存在则自动创建）+ WAL + 建 4 张表。
+     * 失败不致命——打印 stderr 警告后 UI 仍可工作（只读模式，无 at_log / 报告）。
+     * atexit 注册 storage_close 在进程退出前关闭 DB（即使 main 中途 return 也跑）。
+     * 路径用相对路径 "data/agent.db"——EXE 启动 cwd 即安装根目录。 */
+    _mkdir("data");
+    if (storage_init("data/agent.db") == AGENT_OK) {
+        fprintf(stderr, "storage: initialized at data/agent.db\n");
+    } else {
+        fprintf(stderr, "storage: init failed (DB disabled — UI in read-only mode)\n");
+    }
+    atexit(storage_close);
 
     /* 默认值：工程蓝 + zh-CN + 现场诊断 panel */
     memset(&g_app, 0, sizeof(g_app));

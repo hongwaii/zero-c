@@ -420,3 +420,63 @@ set_target_properties(test_sqlite_db PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_sqlite_db"
 )
+
+# test_at_log_writer — P6 at_log 写入 10 条（同步 + 3x retry + file 降级）
+# stub 模式下自动 skip（打印 "skip (sqlite stub mode)" 并返 0）。
+add_executable(test_at_log_writer test_at_log_writer.c)
+target_link_libraries(test_at_log_writer PRIVATE lib_storage)
+target_include_directories(test_at_log_writer PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/storage
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_at_log_writer PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_at_log_writer"
+)
+
+# test_diag_snapshot_writer — P6 diag_snapshot 表 INSERT OR REPLACE 测试
+# stub 模式下自动 skip。真 SQLite 模式 4 个用例（正常插 / 不同 ts / 空参 / recent 占位）。
+add_executable(test_diag_snapshot_writer test_diag_snapshot_writer.c)
+target_link_libraries(test_diag_snapshot_writer PRIVATE
+    lib_storage
+    lib_diag_service   # 提供 diag_state_t
+)
+target_include_directories(test_diag_snapshot_writer PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/storage
+    ${CMAKE_SOURCE_DIR}/lib/diag_service
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_diag_snapshot_writer PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_diag_snapshot_writer"
+)
+
+# test_llm_chat_writer — P6 llm_chat 表 INSERT 测试
+# stub 模式下自动 skip。真 SQLite 模式 4 个用例（user / assistant+tools / tool / 全 NULL）。
+add_executable(test_llm_chat_writer test_llm_chat_writer.c)
+target_link_libraries(test_llm_chat_writer PRIVATE lib_storage)
+target_include_directories(test_llm_chat_writer PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/storage
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_llm_chat_writer PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_llm_chat_writer"
+)
+
+# test_config_io — P6 app.json / devices.json 加载 / 保存 roundtrip（5 case）
+add_executable(test_config_io test_config_io.c)
+target_link_libraries(test_config_io PRIVATE lib_storage)
+target_include_directories(test_config_io PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/storage
+    ${CMAKE_SOURCE_DIR}/lib/util
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_config_io PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_config_io"
+)

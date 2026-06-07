@@ -28,6 +28,14 @@ typedef struct sqlite3_stmt sqlite3_stmt;
 #define SQLITE_ROW      100
 #define SQLITE_DONE     101
 
+/* ---- 析构器常量 ----
+ * 真 SQLite 头文件里 SQLITE_TRANSIENT = ((sqlite3_destructor_type)-1)，
+ * 含义：让 SQLite 立即把绑定字符串拷贝到内部 buffer，调用方可以立即释放原串。
+ * 这里 stub 头不引入 sqlite3_destructor_type 类型别名（避免和真 amalgamation
+ * 名字冲突），直接 typedef 出本地类型；真 SQLite amalgamation 不会重复定义。 */
+typedef void (*sqlite3_destructor_type)(void *);
+#define SQLITE_TRANSIENT ((sqlite3_destructor_type)-1)
+
 /* ---- 关键 API（只声明需要的；其他功能按需追加） ---- */
 int  sqlite3_open(const char *filename, sqlite3 **ppDb);
 int  sqlite3_close(sqlite3 *db);

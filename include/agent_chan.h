@@ -14,12 +14,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "agent_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* 前向声明：HAL 内部用 libuv，公共头不引 uv.h 以避免传递依赖膨胀 */
 struct uv_loop_s;
+
+/* 前向 typedef：vtable 字段需要 modem_chan_t *，但完整 struct 还没出来 */
+typedef struct modem_chan modem_chan_t;
 
 /**
  * @brief HAL 收到字节时回调。buf/len 由回调内部生存期。
@@ -33,9 +38,9 @@ typedef void (*modem_chan_rx_fn)(void *userdata, const uint8_t *buf, size_t len)
  * @brief HAL 通道操作虚表（open / send / close）。
  */
 typedef struct {
-    int  (*open) (struct modem_chan *self, const char *uri);
-    int  (*send) (struct modem_chan *self, const uint8_t *buf, size_t len);
-    void (*close)(struct modem_chan *self);
+    int  (*open) (modem_chan_t *self, const char *uri);
+    int  (*send) (modem_chan_t *self, const uint8_t *buf, size_t len);
+    void (*close)(modem_chan_t *self);
 } modem_chan_ops_t;
 
 /**
@@ -49,6 +54,21 @@ typedef struct modem_chan {
     bool                    is_open;
     char                    uri[256];  /* "com://COM7?baud=9600" / "rndis://name" */
 } modem_chan_t;
+
+/**
+ * @brief 便利函数：通过虚表 send 发数据。
+ * @return 0 成功；负错误码。
+ *
+ * 当前实现：直接走 ops->send，ops 不可用则返回 AGENT_ERR_IO。
+ * 备注：serial_chan.c 显式把 ops 置 NULL（走 serial_chan_send 直接调），
+ * 后续若要把所有 chan 都收回虚表，需要在 serial_chan_create 里赋
+ * ops = &serial_chan_ops，并把 at_session 改为统一走虚表。
+ */
+static inline int modem_chan_send(modem_chan_t *c, const uint8_t *buf, size_t len)
+{
+    if (!c || !c->ops || !c->ops->send) return AGENT_ERR_IO;
+    return c->ops->send(c, buf, len);
+}
 
 #ifdef __cplusplus
 }

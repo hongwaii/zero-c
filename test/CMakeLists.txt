@@ -185,3 +185,22 @@ set_target_properties(test_at_parser PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_at_parser"
 )
+
+# test_at_session — AT 会话（队列/状态机/URC）单元测试
+add_executable(test_at_session test_at_session.c)
+target_link_libraries(test_at_session PRIVATE
+    lib_at_engine
+    third_libuv
+    # libuv 链接 dbghelp（SymGetOptions/MiniDumpWriteDump 等）
+    dbghelp
+)
+target_include_directories(test_at_session PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib/at_engine
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/lib/util
+    ${CMAKE_SOURCE_DIR}/midware/serial
+)
+set_target_properties(test_at_session PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_at_session"
+)

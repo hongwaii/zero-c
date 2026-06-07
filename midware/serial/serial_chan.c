@@ -174,6 +174,15 @@ static int open_com_port(const serial_params_t *p)
 
 /* === ops 实现 === */
 
+/**
+ * @brief 串口实现的虚表——所有 chan 都通过 ops 调，at_session 不需要知道具体类型。
+ */
+static const modem_chan_ops_t s_serial_ops = {
+    .open  = serial_chan_open,
+    .send  = serial_chan_send,
+    .close = serial_chan_close,
+};
+
 int serial_chan_open(modem_chan_t *self, const char *uri)
 {
     if (!self || !self->impl || !uri) return AGENT_ERR_BAD_ARG;
@@ -262,6 +271,7 @@ serial_chan_t *serial_chan_create(uv_loop_t *loop)
     if (!sc) return NULL;
     sc->loop = loop;
     sc->chan.impl = sc;
+    sc->chan.ops = &s_serial_ops;
     sc->chan.is_open = false;
     return sc;
 }

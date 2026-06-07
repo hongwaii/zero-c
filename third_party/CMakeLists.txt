@@ -129,6 +129,27 @@ target_compile_definitions(third_miniz PRIVATE
 )
 ######################## miniz   end ########################
 
+######################## sqlite start ########################
+# SQLite 3.46 amalgamation vendored under third_party/sqlite
+# 用途：P6 持久化（device / diag_snapshot / at_log / llm_chat 四表）
+#
+# 注意：当前为 stub 版本（网络不可达），所有 API 返回 SQLITE_ERROR。
+# 真 amalgamation 从 https://www.sqlite.org/2024/sqlite-amalgamation-3460100.zip
+# 下载后覆盖 sqlite3.c / sqlite3.h 即可，CMakeLists.txt 不需改动。
+set(SQLITE_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite/sqlite3.c
+)
+add_library(third_sqlite STATIC ${SQLITE_SOURCES})
+target_include_directories(third_sqlite PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite
+)
+# 关闭不需要的功能减少二进制大小
+target_compile_definitions(third_sqlite PUBLIC
+    SQLITE_OMIT_LOAD_EXTENSION=1
+    SQLITE_THREADSAFE=1
+)
+######################## sqlite   end ########################
+
 # ============================================================
 #  Example: OpenSSL — choose your approach
 # ============================================================

@@ -36,18 +36,52 @@ void main_window_register_panels(void)
 }
 
 /**
- * @brief 渲染左侧导航栏：app 标题 + 5 个 Selectable + "AI 助手" 按钮。
+ * @brief 渲染左侧导航栏：app 标题 + 5 个 panel 按钮 + "AI 助手" 按钮。
+ *
+ * 用 ImGui::Button + PushStyleColor 替代 Selectable —— 后者在 ImGui 1.92.9
+ * 对 UTF-8 CJK 字符串渲染有问题，前者稳定。Active 态用蓝色背景，inactive 用默认。
  */
 static void render_left_nav(agent_app_t *app)
 {
-    ImGui::BeginChild("nav", ImVec2(200, 0), true);
+    ImGui::BeginChild("nav", ImVec2(220, 0), true);
     ImGui::Text("%s", i18n_get("app.title"));
     ImGui::Separator();
+
     for (int i = 0; i < AGENT_PANEL_COUNT_; i++) {
         const bool active = (app->active_panel == kPanels[i].id);
-        if (ImGui::Selectable(i18n_get(kPanels[i].i18n_key), active, 0, ImVec2(-1, 32)))
+        const char *label = i18n_get(kPanels[i].i18n_key);
+
+        /* 颜色：active 用蓝底白字（视觉上等价于 Selectable 的"选中"态）；
+         * inactive 用普通按钮色。 */
+        if (active) {
+            ImGui::PushStyleColor(ImGuiCol_Button,
+                ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,
+                ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+            ImGui::PushStyleColor(ImGuiCol_Text,
+                ImGui::GetStyleColorVec4(ImGuiCol_Text));
+        } else {
+            /* 让 inactive 看起来不像"按钮"——背景透明 / 文本默认色 */
+            ImGui::PushStyleColor(ImGuiCol_Button,
+                ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,
+                ImGui::GetStyleColorVec4(ImGuiCol_Header));
+            /* Text 色用默认，不 push */
+            ImGui::PushStyleColor(ImGuiCol_Text,
+                ImGui::GetStyleColorVec4(ImGuiCol_Text));
+        }
+
+        if (ImGui::Button(label, ImVec2(-1, 32))) {
             app->active_panel = kPanels[i].id;
+        }
+
+        ImGui::PopStyleColor(4);
     }
+
     ImGui::Separator();
     if (ImGui::Button(i18n_get("nav.llm"), ImVec2(-1, 32)))
         app->llm_drawer_open = !app->llm_drawer_open;

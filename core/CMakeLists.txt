@@ -55,6 +55,7 @@ if (WIN32)
         user32
         gdi32
         kernel32
+        dbghelp   # libuv/src/win/process.c 用 MiniDumpWriteDump / Sym*（third_libuv 未自带）
     )
 endif()
 

@@ -16,6 +16,9 @@
 /* Forward decl: cJSON — used by lib/util/json_*.c only. */
 struct cJSON;
 
+/* libuv loop 前向声明；公共头不引 <uv.h> 避免传递依赖膨胀 */
+struct uv_loop_s;
+
 /* Theme */
 typedef enum {
     AGENT_THEME_ENGINEERING_BLUE = 0,  /* dark, high-contrast (default) */
@@ -56,7 +59,8 @@ typedef struct agent_app {
     agent_panel_id_t       active_panel;
     bool                   llm_drawer_open;
     agent_llm_provider_t  *providers;   /* singly-linked list */
-    /* Future: libuv loop, sqlite handle, etc. — added in P2/P6. */
+    /* libuv loop（host 拥有；panels 通过 app 拿） */
+    struct uv_loop_s *uv_loop;
 } agent_app_t;
 
 /* Render function signature every panel implements. */

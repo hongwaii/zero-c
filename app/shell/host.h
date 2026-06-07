@@ -11,6 +11,10 @@
 
 #include <stdbool.h>
 
+/* libuv loop 前向 typedef：保持 host.h 不引 <uv.h>。 */
+struct uv_loop_s;
+typedef struct uv_loop_s uv_loop_t;
+
 typedef void (*host_tick_fn)(void *userdata);
 
 typedef struct host_ctx host_ctx_t;

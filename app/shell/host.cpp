@@ -16,6 +16,8 @@
 #include "theme.h"
 #include "i18n.h"
 
+#include <uv.h>
+
 /* 主题与 i18n：theme_apply 在 ImGui 上下文创建后立即调用；theme_load_fonts
  * 在 ImGui backend init 之后、第一次 NewFrame 之前；i18n_init 紧随其后。 */
 
@@ -30,6 +32,7 @@ struct host_ctx {
     bool               quit;
     int                width;
     int                height;
+    uv_loop_t         *uv_loop;  /* 弱引用，host 拥有 */
 };
 
 static struct host_ctx *g_active_ctx = NULL;
@@ -127,6 +130,22 @@ int host_create(host_ctx_t **out, const char *title, int width, int height)
 
     if (!host_create_device(c)) { DestroyWindow(c->hwnd); free(c); return -1; }
 
+    /* libuv loop（device_manager / 串口 / 未来定时器都要在这上面跑） */
+    c->uv_loop = (uv_loop_t *)malloc(sizeof(uv_loop_t));
+    if (!c->uv_loop) {
+        fprintf(stderr, "host_create: malloc uv_loop 失败\n");
+        DestroyWindow(c->hwnd);
+        free(c);
+        return -5;
+    }
+    if (uv_loop_init(c->uv_loop) != 0) {
+        fprintf(stderr, "host_create: uv_loop_init 失败\n");
+        free(c->uv_loop);
+        DestroyWindow(c->hwnd);
+        free(c);
+        return -1;
+    }
+
     /* ImGui bootstrap */
     ImGui::CreateContext();
     ImGui_ImplWin32_Init(c->hwnd);
@@ -156,6 +175,9 @@ int host_run(host_ctx_t *c, host_tick_fn tick, void *ud)
             if (msg.message == WM_QUIT) { c->quit = true; break; }
         }
         if (c->quit) break;
+        /* libuv 非阻塞 tick：让 device_manager 的扫描 timer、
+         * 串口 HAL 的读回调能跑。不阻塞主消息循环。 */
+        if (c->uv_loop) uv_run(c->uv_loop, UV_RUN_NOWAIT);
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
@@ -183,6 +205,16 @@ void host_destroy(host_ctx_t *c)
     if (c->ctx) c->ctx->Release();
     if (c->device) c->device->Release();
     if (c->hwnd) DestroyWindow(c->hwnd);
+    /* libuv 清理（顺序：先关 handle，再 close loop） */
+    if (c->uv_loop) {
+        /* 注意：P2 阶段 device_manager 还没 stop，会导致 uv_loop_close 返回非 0。
+         * 进程退出时 OS 回收所有资源；P3 接入 device_manager_stop 后再修此处。 */
+        if (uv_loop_close(c->uv_loop) != 0) {
+            fprintf(stderr, "host_destroy: uv_loop_close 非零（残留 handle），P3 修复\n");
+        }
+        free(c->uv_loop);
+        c->uv_loop = NULL;
+    }
     g_active_ctx = NULL;
     free(c);
 }

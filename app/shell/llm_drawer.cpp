@@ -8,6 +8,7 @@
  */
 #include "llm_drawer.h"
 #include "llm_client.h"
+#include "llm_tool.h"
 #include "provider_config.h"
 #include "i18n.h"
 #include "imgui.h"
@@ -23,6 +24,12 @@ static std::string g_response;
 static bool g_busy = false;
 static char g_err[128] = "";
 
+/* tool_call 确认弹窗全局状态（on_done 写，main loop 渲染） */
+static bool g_show_tool_modal = false;
+static char g_tool_id[64] = "";
+static char g_tool_name[64] = "";
+static char g_tool_args[1024] = "";
+
 /* on_token 回调：worker 线程直接调 → 追加到 g_response */
 static void on_token(const char *t, size_t n, void *ud)
 {
@@ -30,7 +37,7 @@ static void on_token(const char *t, size_t n, void *ud)
     g_response.append(t, n);
 }
 
-/* on_done 回调：worker 线程直接调 → 标记完成 + 可选设置错误 */
+/* on_done 回调：worker 线程直接调 → 标记完成 + 可选设置错误 + 尝试抽 tool_call */
 static void on_done(bool ok, const char *err, void *ud)
 {
     (void)ud;
@@ -40,6 +47,19 @@ static void on_done(bool ok, const char *err, void *ud)
         g_err[sizeof(g_err) - 1] = '\0';
     } else {
         g_err[0] = '\0';
+    }
+    /* 解析 tool_call：有则填全局 + 开 modal */
+    if (ok) {
+        llm_tool_call_t tc = {0};
+        if (llm_extract_tool_call(g_response.c_str(), g_response.size(), &tc)) {
+            std::strncpy(g_tool_id, tc.id, sizeof(g_tool_id) - 1);
+            g_tool_id[sizeof(g_tool_id) - 1] = '\0';
+            std::strncpy(g_tool_name, tc.name, sizeof(g_tool_name) - 1);
+            g_tool_name[sizeof(g_tool_name) - 1] = '\0';
+            std::strncpy(g_tool_args, tc.arguments, sizeof(g_tool_args) - 1);
+            g_tool_args[sizeof(g_tool_args) - 1] = '\0';
+            g_show_tool_modal = true;
+        }
     }
 }
 
@@ -126,5 +146,32 @@ void llm_drawer_render(agent_app_t *app)
     if (g_err[0]) {
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", g_err);
     }
+
+    /* tool_call 确认弹窗：on_done 解析到 tool_call 时 g_show_tool_modal=true → 开 popup */
+    if (g_show_tool_modal) ImGui::OpenPopup("llm_tool_confirm");
+    if (ImGui::BeginPopupModal("llm_tool_confirm", &g_show_tool_modal,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("%s", i18n_get("llm.tool.confirm_title"));
+        ImGui::Separator();
+        ImGui::Text("function: %s", g_tool_name);
+        ImGui::InputTextMultiline("##args", g_tool_args, sizeof(g_tool_args),
+                                  ImVec2(400, 100), ImGuiInputTextFlags_ReadOnly);
+        if (ImGui::Button(i18n_get("llm.tool.confirm_run"))) {
+            /* v1.0：只追加 would-execute 日志到 history；v1.1 真发 AT */
+            g_show_tool_modal = false;
+            char log[1200];
+            std::snprintf(log, sizeof(log), "[tool] would execute: %s(%s)\n",
+                          g_tool_name, g_tool_args);
+            history += log;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(i18n_get("llm.tool.cancel"))) {
+            g_show_tool_modal = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
     ImGui::End();
 }

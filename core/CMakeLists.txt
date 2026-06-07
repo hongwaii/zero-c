@@ -20,10 +20,10 @@ target_include_directories(${PRODUCT_NAME} PRIVATE
 
 target_link_libraries(${PRODUCT_NAME} PRIVATE
     app_shell
+    lib_llm_client        # P5: app_shell 调 llm_extract_tool_call；放最前保证 lld 能解析
     lib_util
     lib_device_manager   # 新加
     lib_diag_service      # 新加：main.cpp 调 diag_service_create
-    lib_llm_client        # P5: panel_settings_seed_defaults 调 llm_provider_config_load
     third_imgui
     third_cjson
     third_libuv

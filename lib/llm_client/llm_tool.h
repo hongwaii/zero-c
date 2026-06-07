@@ -22,9 +22,17 @@ typedef struct {
     char arguments[1024]; /* arguments JSON 字符串原文 */
 } llm_tool_call_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* 从完整 JSON 响应里抽第一条 tool_call。
  * 成功返回 true，out 填充；无 tool_call 或解析失败返回 false。 */
 bool llm_extract_tool_call(const char *response_json, size_t json_len,
                            llm_tool_call_t *out);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

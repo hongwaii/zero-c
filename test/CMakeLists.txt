@@ -216,3 +216,15 @@ set_target_properties(test_diag_state PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_diag_state"
 )
+
+# test_diag_state_ext — P4 扩展字段（ping/ssl/sms/log/health）测试
+add_executable(test_diag_state_ext test_diag_state_ext.c)
+target_link_libraries(test_diag_state_ext PRIVATE lib_diag_service)
+target_include_directories(test_diag_state_ext PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib/diag_service
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_diag_state_ext PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_diag_state_ext"
+)

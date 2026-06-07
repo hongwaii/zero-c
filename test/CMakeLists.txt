@@ -228,3 +228,44 @@ set_target_properties(test_diag_state_ext PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_diag_state_ext"
 )
+
+# test_diag_ping — P4 TCP/UDP ping 测试（mock 远端 + 真实 libuv loop）
+add_executable(test_diag_ping test_diag_ping.c)
+target_link_libraries(test_diag_ping PRIVATE
+    lib_diag_service
+    third_libuv
+    ws2_32
+    # libuv 链接 dbghelp（SymGetOptions/MiniDumpWriteDump 等）
+    dbghelp
+)
+target_include_directories(test_diag_ping PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib/diag_service
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_diag_ping PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_diag_ping"
+)
+
+# test_diag_ssl — P4 SSL 探活（libcurl 同步 GET + certinfo 解析）
+add_executable(test_diag_ssl test_diag_ssl.c)
+target_link_libraries(test_diag_ssl PRIVATE
+    lib_diag_service
+    libcurl_shared
+)
+target_include_directories(test_diag_ssl PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib/diag_service
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/third_party/libcurl/include
+)
+set_target_properties(test_diag_ssl PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_diag_ssl"
+)
+# 运行时把 libcurl.dll 复制到 TEST 目录
+add_custom_command(TARGET test_diag_ssl POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:libcurl_shared>"
+        "${TEST_DIST_DIR}/"
+    COMMENT "Copying libcurl.dll to TEST dist directory for test_diag_ssl..."
+)

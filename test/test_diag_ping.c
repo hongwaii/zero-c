@@ -48,7 +48,6 @@ static void on_ping_done(bool ok, int ms, void *ud)
     uv_stop(r->loop);
 }
 
-#if 0  /* 实现完 UDP 后取消注释 */
 /* UDP echo server：本机 127.0.0.1 收 1 字节立刻回 1 字节 */
 static unsigned __stdcall mock_udp_server(void *arg)
 {
@@ -76,7 +75,6 @@ static int find_free_udp_port(void)
     closesocket(s);
     return port;
 }
-#endif
 
 int main(void)
 {
@@ -107,7 +105,6 @@ int main(void)
 
     printf("test_diag_ping: all pass (TCP ok, %d ms)\n", r.ms);
 
-#if 0  /* 实现完 UDP 后取消注释 */
     int udp_port = find_free_udp_port();
     _beginthreadex(NULL, 0, mock_udp_server, (void *)(intptr_t)udp_port, 0, NULL);
     Sleep(50);  /* 等 server 起来 */
@@ -118,7 +115,6 @@ int main(void)
     assert(r2.done);
     assert(r2.ok == true);
     printf(" + UDP ok, %d ms\n", r2.ms);
-#endif
 
     closesocket(listen_sock);
     WSACleanup();

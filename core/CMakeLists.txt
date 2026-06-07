@@ -21,6 +21,7 @@ target_include_directories(${PRODUCT_NAME} PRIVATE
 target_link_libraries(${PRODUCT_NAME} PRIVATE
     app_shell
     lib_util
+    lib_device_manager   # 新加
     third_imgui
     third_cjson
     third_libuv

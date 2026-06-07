@@ -124,10 +124,22 @@ static HANDLE open_com_port_handle(const serial_params_t *p)
         return INVALID_HANDLE_VALUE;
     }
 
-    /* 短超时：ReadFile 在 stop 触发时能快速返回而不是等满 buffer */
+    /* 串口超时配置：
+     *   ReadIntervalTimeout: 字节间最大间隔 20ms（AT 命令响应字节都连着来）
+     *   ReadTotalTimeoutMultiplier=0: 0 表示不按字节数累计——ReadTotalTimeout
+     *                              = 0*N + Constant = Constant，与请求 buffer
+     *                              大小无关（避免之前 10*1024=10 秒卡顿）
+     *   ReadTotalTimeoutConstant=100: 总超时 100ms——AT 命令毫秒级响应足够
+     *
+     * 历史 bug：之前 Multi=10、Constant=100、READ_BUF_CAP=1024 时
+     *   ReadTotalTimeout = 10*1024 + 100 = 10340ms
+     * 即使模组立刻回 "AT\r\nOK\r\n"（6 字节），ReadFile 也要傻等 ~10s 凑够 1024 字节
+     * 才返回，导致用户发 AT 后 UI 卡 10+ 秒。
+     *
+     * Multi=0 是 Windows 串口"快速轮询"的标准配置。 */
     COMMTIMEOUTS ct = {0};
-    ct.ReadIntervalTimeout = 50;
-    ct.ReadTotalTimeoutMultiplier = 10;
+    ct.ReadIntervalTimeout = 20;
+    ct.ReadTotalTimeoutMultiplier = 0;
     ct.ReadTotalTimeoutConstant = 100;
     SetCommTimeouts(h, &ct);
 

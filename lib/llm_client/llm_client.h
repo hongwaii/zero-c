@@ -15,6 +15,10 @@
 
 #include "agent_types.h"  /* agent_llm_provider_t */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* 单个 token 流式回调。v1.0：worker 线程直接调。 */
 typedef void (*llm_token_cb)(const char *token, size_t len, void *userdata);
 
@@ -37,5 +41,9 @@ int  llm_chat_stream(const agent_llm_provider_t *provider,
                      llm_token_cb on_token,
                      llm_done_cb  on_done,
                      void        *userdata);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

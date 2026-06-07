@@ -27,6 +27,7 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     third_imgui
     third_cjson
     third_libuv
+    lib_llm_client
     app_panel_diag
     app_panel_devices
     app_panel_prod

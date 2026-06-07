@@ -63,5 +63,6 @@
   "llm.drawer.title": "AI 助手",
   "llm.drawer.placeholder": "问我关于这块模组的任何问题…",
   "llm.drawer.send": "发送",
-  "llm.drawer.disclaimer": "AI 生成的 AT 指令需你确认后才会下发到模组。"
+  "llm.drawer.disclaimer": "AI 生成的 AT 指令需你确认后才会下发到模组。",
+  "llm.drawer.no_key": "无 provider 已配 key（请在设置页填 key 后保存）"
 }

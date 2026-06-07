@@ -158,3 +158,17 @@ set_target_properties(test_ringbuf PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_ringbuf"
 )
+
+# test_ncm_enumerate — NCM/RNDIS 网卡枚举集成测试
+add_executable(test_ncm_enumerate test_ncm_enumerate.c)
+target_link_libraries(test_ncm_enumerate PRIVATE
+    midware_usb_ncm
+)
+target_include_directories(test_ncm_enumerate PRIVATE
+    ${CMAKE_SOURCE_DIR}/midware/usb_ncm
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_ncm_enumerate PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_ncm_enumerate"
+)

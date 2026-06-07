@@ -17,6 +17,9 @@ add_subdirectory(http)
 # ---- Serial (COM port) channel middleware ----
 add_subdirectory(serial)
 
+# ---- USB-NCM / RNDIS 网卡枚举中间件 ----
+add_subdirectory(usb_ncm)
+
 # TODO: Add new modules here, e.g.:
 # add_subdirectory(mqtt)
 # add_subdirectory(websocket)

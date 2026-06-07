@@ -120,3 +120,12 @@ int sqlite3_errcode(sqlite3 *db)
     (void)db;
     return g_last_errcode;
 }
+
+/* sqlite3_free：释放 sqlite3_exec / sqlite3_mprintf 等返回的字符串。
+ * stub 模式下 sqlite3_exec 不分配字符串（errmsg=NULL），但调用方仍可能
+ * 防御性 free 一个 NULL；为安全起见提供实现。 */
+void sqlite3_free(void *ptr)
+{
+    (void)ptr;
+    /* stub 模式不分配 → 无操作；真 amalgamation 此处调 free() */
+}

@@ -49,4 +49,7 @@ int  sqlite3_errmsg(sqlite3 *db, char *buf, int buf_size);
 const char *sqlite3_errmsg_str(sqlite3 *db);
 int  sqlite3_errcode(sqlite3 *db);
 
+/* 释放 sqlite3_exec / sqlite3_mprintf 等返回的字符串 */
+void sqlite3_free(void *ptr);
+
 #endif /* SQLITE3_H */

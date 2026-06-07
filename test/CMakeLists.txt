@@ -406,3 +406,17 @@ set_target_properties(test_provider_config PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_provider_config"
 )
+
+# test_sqlite_db — P6 sqlite_db 包装开 / 关 / 4 表 schema 初始化
+# stub 模式下自动 skip（打印 "skip (sqlite stub mode)" 并返 0）。
+add_executable(test_sqlite_db test_sqlite_db.c)
+target_link_libraries(test_sqlite_db PRIVATE lib_storage)
+target_include_directories(test_sqlite_db PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/storage
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_sqlite_db PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_sqlite_db"
+)

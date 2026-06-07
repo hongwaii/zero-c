@@ -324,3 +324,27 @@ set_target_properties(test_diag_health PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_diag_health"
 )
+
+# test_llm_dpapi — P5 DPAPI 加密/解密 roundtrip（ASCII + 中文）
+add_executable(test_llm_dpapi      test_llm_dpapi.c)
+target_link_libraries(test_llm_dpapi PRIVATE
+    lib_llm_client
+    crypt32
+)
+set_target_properties(test_llm_dpapi PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_llm_dpapi"
+)
+
+# test_llm_sse — P5 SSE 字节流解析器单元测试（5 case）
+add_executable(test_llm_sse        test_llm_sse.c)
+target_link_libraries(test_llm_sse PRIVATE lib_llm_client)
+target_include_directories(test_llm_sse PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/llm_client
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_llm_sse PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_llm_sse"
+)

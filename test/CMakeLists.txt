@@ -467,6 +467,20 @@ set_target_properties(test_llm_chat_writer PROPERTIES
     OUTPUT_NAME "test_llm_chat_writer"
 )
 
+# test_report_html — P6 report_html_export 自包含 HTML 生成（4 case）
+# stub 模式下自动 skip。真 SQLite 模式检查文件大小 + 关键字段。
+add_executable(test_report_html test_report_html.c)
+target_link_libraries(test_report_html PRIVATE lib_storage)
+target_include_directories(test_report_html PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/storage
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_report_html PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_report_html"
+)
+
 # test_config_io — P6 app.json / devices.json 加载 / 保存 roundtrip（5 case）
 add_executable(test_config_io test_config_io.c)
 target_link_libraries(test_config_io PRIVATE lib_storage)

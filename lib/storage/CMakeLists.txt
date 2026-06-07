@@ -9,9 +9,10 @@
 #   - diag_snapshot_writer diag 同步写 (Task 4)
 #   - llm_chat_writer      LLM 同步写 (Task 4)
 #   - config_io            app.json / devices.json 加载 / 保存 (Task 6)
+#   - report_html          self-contained HTML 报告 (Task 5)
 #
 # 后续 task 追加：
-#   - report_html          自包含 HTML 报告 (Task 5)
+#   - （已完成 Task 5: report_html）
 # ============================================================
 set(MODULE_NAME lib_storage)
 
@@ -21,7 +22,7 @@ add_library(${MODULE_NAME} STATIC
     diag_snapshot_writer.c
     llm_chat_writer.c
     config_io.c
-    # report_html 在后续 task 追加
+    report_html.c
 )
 
 target_include_directories(${MODULE_NAME} PUBLIC

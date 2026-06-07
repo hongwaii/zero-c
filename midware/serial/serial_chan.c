@@ -302,26 +302,37 @@ int serial_chan_send_impl(modem_chan_t *self, const uint8_t *buf, size_t len)
 /**
  * @brief 关闭串口、回收 reader 线程、释放 uv_async 与 ringbuf。
  *
- * 6 步顺序：stop_flag → CancelIo → 等线程 → 关 HANDLE → 关 async → 释放 ringbuf。
- * 必须先 CancelIo 再 WaitForSingleObject，否则 reader 线程会一直阻塞在 ReadFile。
+ * 7 步顺序：stop_flag → CancelSynchronousIo → 等线程 → 关 HANDLE → 关 async → 释放 ringbuf → Sleep 200ms。
+ * 必须先取消挂起 I/O 再 WaitForSingleObject，否则 reader 线程会一直阻塞在 ReadFile。
+ *
+ * 关键改动：
+ *   - 用 CancelSynchronousIo(thread) 替代 CancelIo(handle)：前者专门用来在另一个线程
+ *     里取消目标线程的同步 I/O（Win Vista+），比 CancelIo 更彻底。
+ *   - Sleep(200) 给 kernel 时间释放 in-flight ReadFile 的句柄引用，避免立即重连时
+ *     ERROR_BUSY=170。
  */
 void serial_chan_close_impl(modem_chan_t *self)
 {
     if (!self || !self->impl || !self->is_open) return;
     serial_chan_t *sc = (serial_chan_t *)self->impl;
 
-    /* 1) 通知 reader 线程停止 + 取消挂起的 ReadFile */
+    /* 1) 通知 reader 线程停止 + 取消挂起的 ReadFile。
+     *    CancelSynchronousIo 专门用来在另一个线程里取消目标线程当前正在做的同步 I/O
+     *    （Win Vista+）。比 CancelIo 更彻底——它会等到 ReadFile 返回才让 CancelIoEx
+     *    真正完成。 */
     sc->stop_flag = true;
-    if (sc->handle != INVALID_HANDLE_VALUE) {
-        CancelIo(sc->handle);  /* 让 ReadFile 立刻返回 */
+    if (sc->thread) {
+        CancelSynchronousIo(sc->thread);   /* 针对 reader 线程句柄 */
+    } else if (sc->handle != INVALID_HANDLE_VALUE) {
+        CancelIo(sc->handle);
     }
 
-    /* 2) 等 reader 线程退出（最多 1s） */
+    /* 2) 等 reader 线程退出（最多 2s） */
     if (sc->thread) {
-        DWORD wait_rc = WaitForSingleObject(sc->thread, 1000);
+        DWORD wait_rc = WaitForSingleObject(sc->thread, 2000);
         if (wait_rc == WAIT_TIMEOUT) {
             fprintf(stderr,
-                    "serial_chan[%s]: reader thread did not exit in 1s, terminating\n",
+                    "serial_chan[%s]: reader thread did not exit in 2s, terminating\n",
                     sc->name);
             TerminateThread(sc->thread, 1);
         }
@@ -335,17 +346,22 @@ void serial_chan_close_impl(modem_chan_t *self)
         sc->handle = INVALID_HANDLE_VALUE;
     }
 
-    /* 4) 关闭 + 释放 uv_async */
+    /* 4) 等 kernel 释放句柄引用（200ms 兜底，避免立即重连时 ERROR_BUSY=170）。
+     *    CloseHandle 不保证 in-flight ReadFile 的句柄引用立即归零——kernel 串口驱动
+     *    独占模式下需要短暂时间清理。200ms 同步 Sleep 可接受因为 close 路径用户感知不到。 */
+    Sleep(200);
+
+    /* 5) 关闭 + 释放 uv_async */
     if (sc->async) {
         uv_close((uv_handle_t *)sc->async, NULL);
         free(sc->async);
         sc->async = NULL;
     }
 
-    /* 5) 释放 ringbuf */
+    /* 6) 释放 ringbuf */
     ringbuf_free(&sc->rx_ring);
 
-    /* 6) 解除 chan 关联 */
+    /* 7) 解除 chan 关联 */
     self->is_open = false;
     sc->chan.on_rx = NULL;
     sc->chan.userdata = NULL;

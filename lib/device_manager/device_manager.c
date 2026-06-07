@@ -2,10 +2,15 @@
  * @file device_manager.c
  * @brief 多模组 manager 实现。
  *
- * 每 0.5 秒扫描一次：端口(COM & LPT)类的 COM 端口（SetupDi+GUID_CLASS_PORTS）+ NCM/RNDIS 网卡（ncm_enumerate）。
+ * 每 0.5 秒扫描一次：
+ *   1) QueryDosDeviceW 列所有 COM 端口（保证能列出来，Win32 老 API）
+ *   2) 对每个 COM 端口，SetupDi+GUID_DEVCLASS_PORTS 反向查友好名（不一定能查到，失败用 "COM <n>" 兜底）
+ *   3) NCM/RNDIS 网卡（ncm_enumerate）
+ *
  * Diff 后增删 modem_dev_t，触发 on_change 回调。
  *
- * 列"端口(COM & LPT)"类的设备——覆盖 USB CDC-ACM 4G/NBIoT 模组及传统串口。
+ * 两阶段设计：CDC-ACM 模组可能注册在非标准设备类里，纯 SetupDi 枚举会漏；
+ * 改用 QueryDosDeviceW 兜底，SetupDi 只用来拿友好名，失败也无妨。
  */
 #include "device_manager.h"
 #include "ncm_chan.h"
@@ -41,66 +46,105 @@ static const GUID kGuidClassPorts = {
 /* === 工具：列 COM 端口 === */
 
 /**
- * @brief 枚举"端口(COM & LPT)"类的 COM 设备，输出端口名 + 友好名。
- * @param out_com  输出 COM 名数组（"COM4" 等），max 项
- * @param out_name 输出友好名数组（"USB Serial Device (COM4)" 等），max 项
+ * @brief 通过 QueryDosDeviceW 列出所有 COM 端口，附加 SetupDi 查到的友好名。
+ *
+ * 两阶段：
+ *   1. QueryDosDeviceW 列所有 "COM<n>" 设备（保证能列出来，Win32 老 API）
+ *   2. 对每个 COM 端口，SetupDi 反向查友好名（不一定能查到，失败用 "COM <n>" 兜底）
+ *
+ * P3 暂不按设备类过滤——CDC-ACM 模组可能注册在任意设备类里，SetupDi 枚举
+ * 不一定能找到；不如让用户看到所有端口并通过友好名识别。
+ *
+ * @param out_com  输出 COM 名数组（"COM4" 等），最多 max 项
+ * @param out_name 输出 label 数组（优先友好名，回退 "COM <n>"），最多 max 项
  * @param max     数组容量
  * @return 实际写入数量
  */
-static int list_modem_com_ports(char out_com[][8], char out_name[][128], int max)
+static int list_com_ports_with_names(char out_com[][8], char out_name[][128], int max)
 {
-    HDEVINFO dev_info = SetupDiGetClassDevsW(&kGuidClassPorts, NULL, NULL,
-                                            DIGCF_PRESENT);
-    if (dev_info == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "device_manager: SetupDiGetClassDevs 失败: %lu\n", GetLastError());
+    /* 第一阶段：QueryDosDeviceW 列所有 COM 端口 */
+    const DWORD buf_size = 64 * 1024;
+    wchar_t *buf = (wchar_t *)malloc(buf_size);
+    if (!buf) return 0;
+    DWORD got = QueryDosDeviceW(NULL, buf, buf_size);
+    if (got == 0) {
+        fprintf(stderr, "device_manager: QueryDosDeviceW 失败: %lu\n", GetLastError());
+        free(buf);
         return 0;
     }
+    int n = 0;
+    wchar_t *p = buf;
+    while (*p && n < max) {
+        if (wcsncmp(p, L"COM", 3) == 0) {
+            char name[8];
+            WideCharToMultiByte(CP_ACP, 0, p, 7, name, sizeof(name), NULL, NULL);
+            name[7] = '\0';
+            strncpy(out_com[n], name, 8);
+            n++;
+        }
+        p += wcslen(p) + 1;
+    }
+    free(buf);
 
+    /* 第二阶段：给每个 COM 端口反查友好名 */
+    HDEVINFO dev_info = SetupDiGetClassDevsW(&kGuidClassPorts, NULL, NULL, DIGCF_PRESENT);
+    if (dev_info == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "device_manager: SetupDiGetClassDevs 失败（仅影响友好名）: %lu\n",
+                GetLastError());
+        /* SetupDi 失败：所有端口用兜底名 "COM <n>" */
+        for (int i = 0; i < n; i++) {
+            snprintf(out_name[i], 128, "COM %s", out_com[i]);
+            fprintf(stderr, "device_manager: 端口 %s: '%s'（兜底）\n",
+                    out_com[i], out_name[i]);
+        }
+        return n;
+    }
     SP_DEVINFO_DATA dev_info_data;
     dev_info_data.cbSize = sizeof(dev_info_data);
-    int n = 0;
-    for (DWORD i = 0; SetupDiEnumDeviceInfo(dev_info, i, &dev_info_data) && n < max; i++) {
-        /* 取友好名（用于 stderr 调试 + UI label） */
-        wchar_t friendly[256] = {0};
-        SetupDiGetDeviceRegistryPropertyW(dev_info, &dev_info_data,
-            SPDRP_FRIENDLYNAME, NULL, (PBYTE)friendly, sizeof(friendly), NULL);
 
-        /* 通过注册表查 "PortName"（如 "COM4"）—— 这是 Ports 类的标准做法 */
-        HKEY hKey = SetupDiOpenDevRegKey(dev_info, &dev_info_data,
-                                        DICS_FLAG_GLOBAL, 0, DIREG_DRV, KEY_READ);
-        if (hKey == INVALID_HANDLE_VALUE) continue;
+    for (int i = 0; i < n; i++) {
+        out_name[i][0] = '\0';
+        for (DWORD j = 0; SetupDiEnumDeviceInfo(dev_info, j, &dev_info_data); j++) {
+            HKEY hKey = SetupDiOpenDevRegKey(dev_info, &dev_info_data,
+                                            DICS_FLAG_GLOBAL, 0, DIREG_DRV, KEY_READ);
+            if (hKey == INVALID_HANDLE_VALUE) continue;
 
-        wchar_t portName[32] = {0};
-        DWORD len = sizeof(portName);
-        LONG rc = RegQueryValueExW(hKey, L"PortName", NULL, NULL,
-                                  (LPBYTE)portName, &len);
-        RegCloseKey(hKey);
-        if (rc != ERROR_SUCCESS || portName[0] == '\0') continue;
+            wchar_t portName[32] = {0};
+            DWORD len = sizeof(portName);
+            LONG rc = RegQueryValueExW(hKey, L"PortName", NULL, NULL,
+                                      (LPBYTE)portName, &len);
+            RegCloseKey(hKey);
+            if (rc != ERROR_SUCCESS || portName[0] == '\0') continue;
 
-        /* 跳过 "COM" 前缀可能的小写 / 带 "(COMx)" 形式 */
-        const wchar_t *p = portName;
-        if (wcsncmp(p, L"COM", 3) == 0) p += 3;
-        else continue;
+            /* 拿掉 "COM" 前缀得到纯端口名 */
+            const wchar_t *q = portName;
+            if (wcsncmp(q, L"COM", 3) == 0) q += 3;
+            else continue;
 
-        char com_name[8];
-        WideCharToMultiByte(CP_ACP, 0, p, 7, com_name, sizeof(com_name), NULL, NULL);
-        com_name[7] = '\0';
-        if (com_name[0] == '\0') continue;
+            char com_name[8];
+            WideCharToMultiByte(CP_ACP, 0, q, 7, com_name, sizeof(com_name), NULL, NULL);
+            com_name[7] = '\0';
+            if (strcmp(com_name, out_com[i]) != 0) continue;
 
-        strncpy(out_com[n], com_name, 8);
-
-        /* 友好名 UTF-8 转 */
-        char aname[128];
-        WideCharToMultiByte(CP_UTF8, 0, friendly, 127, aname, sizeof(aname) - 1, NULL, NULL);
-        aname[sizeof(aname) - 1] = '\0';
-        /* 友好名可能自带 "(COM4)" 后缀，截掉避免重复 */
-        char *p_paren = strrchr(aname, '(');
-        if (p_paren && p_paren > aname) *(p_paren - 1) = '\0';  /* 去掉前导空格+括号 */
-        if (aname[0] == '\0') snprintf(aname, sizeof(aname), "COM %s", com_name);
-        strncpy(out_name[n], aname, 128);
-        n++;
-
-        fprintf(stderr, "device_manager: 端口 %s: '%s'\n", com_name, aname);
+            /* 匹配：拿友好名 */
+            wchar_t friendly[256] = {0};
+            SetupDiGetDeviceRegistryPropertyW(dev_info, &dev_info_data,
+                SPDRP_FRIENDLYNAME, NULL, (PBYTE)friendly, sizeof(friendly), NULL);
+            char aname[128];
+            WideCharToMultiByte(CP_UTF8, 0, friendly, 127,
+                                aname, sizeof(aname) - 1, NULL, NULL);
+            aname[sizeof(aname) - 1] = '\0';
+            /* 友好名可能自带 "(COMn)"，截到 ( 之前以避免重复 */
+            char *p_paren = strchr(aname, '(');
+            if (p_paren && p_paren > aname) *(p_paren - 1) = '\0';
+            if (aname[0] == '\0') snprintf(aname, sizeof(aname), "COM %s", out_com[i]);
+            strncpy(out_name[i], aname, 128);
+            break;  /* 找到匹配就跳出内层循环 */
+        }
+        if (out_name[i][0] == '\0') {
+            snprintf(out_name[i], 128, "COM %s", out_com[i]);
+        }
+        fprintf(stderr, "device_manager: 端口 %s: '%s'\n", out_com[i], out_name[i]);
     }
     SetupDiDestroyDeviceInfoList(dev_info);
     return n;
@@ -142,7 +186,7 @@ static void do_scan(uv_timer_t *handle)
 
     char com_now[MAX_SCAN_RESULT][8];
     char com_name_now[MAX_SCAN_RESULT][128];
-    int  com_n = list_modem_com_ports(com_now, com_name_now, MAX_SCAN_RESULT);
+    int  com_n = list_com_ports_with_names(com_now, com_name_now, MAX_SCAN_RESULT);
 
     ncm_interface_t ncm_now[NCM_MAX_INTERFACES];
     int  ncm_n = ncm_enumerate(ncm_now, NCM_MAX_INTERFACES);

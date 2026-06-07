@@ -388,3 +388,21 @@ add_custom_command(TARGET test_llm_client_mock POST_BUILD
         "${TEST_DIST_DIR}/"
     COMMENT "Copying libcurl.dll to TEST dist directory for test_llm_client_mock..."
 )
+
+# test_provider_config — P5 provider_config 5 厂商 + DPAPI roundtrip
+add_executable(test_provider_config test_provider_config.c)
+target_link_libraries(test_provider_config PRIVATE
+    lib_llm_client
+    lib_util
+    crypt32
+)
+target_include_directories(test_provider_config PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/llm_client
+    ${CMAKE_SOURCE_DIR}/lib/util
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_provider_config PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_provider_config"
+)

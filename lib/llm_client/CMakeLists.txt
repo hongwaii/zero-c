@@ -8,18 +8,20 @@ add_library(${MODULE_NAME} STATIC
     llm_dpapi.c
     llm_client.c
     llm_tool.c
-    # provider_config.c 在后续 task 追加
+    provider_config.c
 )
 
 target_include_directories(${MODULE_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/lib/util
 )
 
 target_link_libraries(${MODULE_NAME} PUBLIC
     libcurl_shared
     third_cjson
     third_libuv
+    lib_util   # json_reader / json_writer
 )
 
 if (WIN32)

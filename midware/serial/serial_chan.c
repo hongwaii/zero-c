@@ -141,7 +141,7 @@ static int open_com_port(const serial_params_t *p)
         FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
         NULL);
     if (h == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "serial_chan: CreateFile(%s) 失败: %lu\n",
+        fprintf(stderr, "serial_chan: CreateFile(%s) failed: %lu\n",
                 full_name, GetLastError());
         return -1;
     }
@@ -212,7 +212,7 @@ int serial_chan_open(modem_chan_t *self, const char *uri)
     if (r != 0) {
         _close(fd);
         ringbuf_free(&sc->rx_ring);
-        fprintf(stderr, "serial_chan: uv_tty_init(%s) 失败: %s\n",
+        fprintf(stderr, "serial_chan: uv_tty_init(%s) failed: %s\n",
                 p.name, uv_strerror(r));
         return AGENT_ERR_IO;
     }
@@ -222,7 +222,7 @@ int serial_chan_open(modem_chan_t *self, const char *uri)
     if (r != 0) {
         uv_close((uv_handle_t *)&sc->tty, on_tty_close);
         ringbuf_free(&sc->rx_ring);
-        fprintf(stderr, "serial_chan: uv_read_start 失败: %s\n", uv_strerror(r));
+        fprintf(stderr, "serial_chan: uv_read_start failed: %s\n", uv_strerror(r));
         return AGENT_ERR_IO;
     }
 
@@ -230,7 +230,7 @@ int serial_chan_open(modem_chan_t *self, const char *uri)
     self->uri[sizeof(self->uri) - 1] = '\0';
     self->is_open = true;
 
-    fprintf(stderr, "serial_chan: 打开 %s @ %d 成功\n", p.name, sc->baud);
+    fprintf(stderr, "serial_chan: opened %s @ %d\n", p.name, sc->baud);
     return AGENT_OK;
 }
 
@@ -261,7 +261,7 @@ void serial_chan_close(modem_chan_t *self)
     uv_close((uv_handle_t *)&sc->tty, on_tty_close);
     ringbuf_free(&sc->rx_ring);
     self->is_open = false;
-    fprintf(stderr, "serial_chan: 关闭 %s\n", sc->name);
+    fprintf(stderr, "serial_chan: closed %s\n", sc->name);
 }
 
 serial_chan_t *serial_chan_create(uv_loop_t *loop)

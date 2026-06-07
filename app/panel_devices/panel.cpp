@@ -80,7 +80,7 @@ void panel_devices_render(agent_app_t *app)
                 if (ImGui::Button(d->state == DEV_STATE_ERROR ? "重试" : "连接")) {
                     int rc = device_manager_connect_dev(m, r);
                     if (rc != 0) {
-                        fprintf(stderr, "panel_devices: connect dev %d 失败 rc=%d (%s)\n",
+                        fprintf(stderr, "panel_devices: connect dev %d failed rc=%d (%s)\n",
                                 r, rc, agent_errstr(rc));
                     }
                 }

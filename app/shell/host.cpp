@@ -133,13 +133,13 @@ int host_create(host_ctx_t **out, const char *title, int width, int height)
     /* libuv loop（device_manager / 串口 / 未来定时器都要在这上面跑） */
     c->uv_loop = (uv_loop_t *)malloc(sizeof(uv_loop_t));
     if (!c->uv_loop) {
-        fprintf(stderr, "host_create: malloc uv_loop 失败\n");
+        fprintf(stderr, "host_create: malloc uv_loop failed\n");
         DestroyWindow(c->hwnd);
         free(c);
         return -5;
     }
     if (uv_loop_init(c->uv_loop) != 0) {
-        fprintf(stderr, "host_create: uv_loop_init 失败\n");
+        fprintf(stderr, "host_create: uv_loop_init failed\n");
         free(c->uv_loop);
         DestroyWindow(c->hwnd);
         free(c);
@@ -210,7 +210,7 @@ void host_destroy(host_ctx_t *c)
         /* 注意：P2 阶段 device_manager 还没 stop，会导致 uv_loop_close 返回非 0。
          * 进程退出时 OS 回收所有资源；P3 接入 device_manager_stop 后再修此处。 */
         if (uv_loop_close(c->uv_loop) != 0) {
-            fprintf(stderr, "host_destroy: uv_loop_close 非零（残留 handle），P3 修复\n");
+            fprintf(stderr, "host_destroy: uv_loop_close non-zero (residual handles), P3 fix\n");
         }
         free(c->uv_loop);
         c->uv_loop = NULL;

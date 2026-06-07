@@ -119,7 +119,7 @@ static void try_send_next(at_session_t *s)
     int n = snprintf(buf, sizeof(buf), "%s\r", front->cmd);
     if (n < 0 || n >= (int)sizeof(buf)) return;
     if (modem_chan_send(s->chan, (const uint8_t *)buf, (size_t)n) != 0) {
-        fprintf(stderr, "at_session: chan send 失败\n");
+        fprintf(stderr, "at_session: chan send failed\n");
         complete_current(s, false);
         return;
     }
@@ -133,7 +133,7 @@ static void try_send_next(at_session_t *s)
 static void on_cmd_timeout(uv_timer_t *handle)
 {
     at_session_t *s = (at_session_t *)handle->data;
-    fprintf(stderr, "at_session: 命令超时\n");
+    fprintf(stderr, "at_session: command timeout\n");
     complete_current(s, false);
     try_send_next(s);
 }

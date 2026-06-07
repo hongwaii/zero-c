@@ -58,7 +58,7 @@ int ncm_enumerate(ncm_interface_t *out, int max)
         rc = GetAdaptersAddresses(AF_INET, flags, NULL, buf, &buf_len);
     }
     if (rc != NO_ERROR) {
-        fprintf(stderr, "ncm_enumerate: GetAdaptersAddresses 失败 rc=%lu\n", rc);
+        fprintf(stderr, "ncm_enumerate: GetAdaptersAddresses failed rc=%lu\n", rc);
         free(buf);
         return 0;
     }
@@ -90,8 +90,8 @@ int ncm_enumerate(ncm_interface_t *out, int max)
             }
         }
         dst->is_candidate = true;
-        fprintf(stderr, "ncm_enumerate: 命中 '%s' ipv4=%s\n",
-                dst->if_name, dst->ipv4[0] ? dst->ipv4 : "(无)");
+        fprintf(stderr, "ncm_enumerate: hit '%s' ipv4=%s\n",
+                dst->if_name, dst->ipv4[0] ? dst->ipv4 : "(none)");
     }
 
     free(buf);

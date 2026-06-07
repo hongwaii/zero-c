@@ -64,7 +64,7 @@ static struct cJSON *try_load_lang_file(agent_lang_t lang)
     for (int i = 0; i < 2; i++) {
         snprintf(path, sizeof(path), cwd_templates[i], base);
         if (json_load_file(path, &root) == AGENT_OK) {
-            fprintf(stderr, "i18n: 加载 %s 成功（cwd 相对）\n", path);
+            fprintf(stderr, "i18n: loaded %s successfully (cwd-relative)\n", path);
             return root;
         }
     }
@@ -73,7 +73,7 @@ static struct cJSON *try_load_lang_file(agent_lang_t lang)
     char exe_dir[1024];
     DWORD dn = get_exe_dir(exe_dir, sizeof(exe_dir));
     if (dn == 0) {
-        fprintf(stderr, "i18n: GetModuleFileNameA 失败\n");
+        fprintf(stderr, "i18n: GetModuleFileNameA failed\n");
         return NULL;
     }
 
@@ -85,12 +85,12 @@ static struct cJSON *try_load_lang_file(agent_lang_t lang)
     for (int i = 0; i < 3; i++) {
         snprintf(path, sizeof(path), "%s/%s", exe_dir, exe_templates[i]);
         if (json_load_file(path, &root) == AGENT_OK) {
-            fprintf(stderr, "i18n: 加载 %s 成功（exe_dir 相对）\n", path);
+            fprintf(stderr, "i18n: loaded %s successfully (exe_dir-relative)\n", path);
             return root;
         }
     }
 
-    fprintf(stderr, "i18n: 找不到 %s，所有候选路径都试过\n", base);
+    fprintf(stderr, "i18n: %s not found, all candidate paths tried\n", base);
     return NULL;
 }
 

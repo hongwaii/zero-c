@@ -68,7 +68,7 @@ static int list_com_ports_with_names(char out_com[][8], char out_name[][128], in
     if (!buf) return 0;
     DWORD got = QueryDosDeviceW(NULL, buf, buf_size);
     if (got == 0) {
-        fprintf(stderr, "device_manager: QueryDosDeviceW 失败: %lu\n", GetLastError());
+        fprintf(stderr, "device_manager: QueryDosDeviceW failed: %lu\n", GetLastError());
         free(buf);
         return 0;
     }
@@ -94,12 +94,12 @@ static int list_com_ports_with_names(char out_com[][8], char out_name[][128], in
     /* 第二阶段：给每个 COM 端口反查友好名 */
     HDEVINFO dev_info = SetupDiGetClassDevsW(&kGuidClassPorts, NULL, NULL, DIGCF_PRESENT);
     if (dev_info == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "device_manager: SetupDiGetClassDevs 失败（仅影响友好名）: %lu\n",
+        fprintf(stderr, "device_manager: SetupDiGetClassDevs failed (friendly-name only): %lu\n",
                 GetLastError());
         /* SetupDi 失败：所有端口用兜底名 "COM <n>" */
         for (int i = 0; i < n; i++) {
             snprintf(out_name[i], 128, "COM %s", out_com[i]);
-            fprintf(stderr, "device_manager: 端口 %s: '%s'（兜底）\n",
+            fprintf(stderr, "device_manager: port %s: '%s' (fallback)\n",
                     out_com[i], out_name[i]);
         }
         return n;
@@ -149,7 +149,7 @@ static int list_com_ports_with_names(char out_com[][8], char out_name[][128], in
         if (out_name[i][0] == '\0') {
             snprintf(out_name[i], 128, "COM %s", out_com[i]);
         }
-        fprintf(stderr, "device_manager: 端口 %s: '%s'\n", out_com[i], out_name[i]);
+        fprintf(stderr, "device_manager: port %s: '%s'\n", out_com[i], out_name[i]);
     }
     SetupDiDestroyDeviceInfoList(dev_info);
     return n;
@@ -254,7 +254,7 @@ static void do_scan(uv_timer_t *handle)
     for (int i = 0; i < ncm_n; i++) strncpy(m->prev_ncm[i], ncm_now[i].if_name, 128);
     m->prev_ncm_count = ncm_n;
 
-    fprintf(stderr, "device_manager: 扫描 diff — COM +%d/-%d, NCM +%d/-%d → 共 %d 设备\n",
+    fprintf(stderr, "device_manager: scan diff -- COM +%d/-%d, NCM +%d/-%d -> %d devices total\n",
             com_added, com_removed, ncm_added, ncm_removed, m->dev_count);
     post_change_event(m);
 }
@@ -277,7 +277,7 @@ int device_manager_start(device_manager_t *m)
     m->scan_timer->data = m;
     r = uv_timer_start(m->scan_timer, do_scan, 0, SCAN_INTERVAL_MS);
     if (r != 0) return AGENT_ERR_IO;
-    fprintf(stderr, "device_manager: 启动扫描，间隔 %d ms\n", SCAN_INTERVAL_MS);
+    fprintf(stderr, "device_manager: scan started, interval %d ms\n", SCAN_INTERVAL_MS);
     return AGENT_OK;
 }
 
@@ -319,7 +319,7 @@ int device_manager_connect_dev(device_manager_t *m, int dev_idx)
 
     /* 只支持 COM 串口 */
     if (strncmp(d->chan_uri, "com://", 6) != 0) {
-        fprintf(stderr, "device_manager: 暂只支持 com:// 通道（%s）\n", d->chan_uri);
+        fprintf(stderr, "device_manager: only com:// supported (%s)\n", d->chan_uri);
         return AGENT_ERR_BAD_ARG;
     }
 
@@ -328,7 +328,7 @@ int device_manager_connect_dev(device_manager_t *m, int dev_idx)
     if (!d->serial) return AGENT_ERR_OOM;
     modem_chan_t *chan = &d->serial->chan;
     if (serial_chan_open(chan, d->chan_uri) != 0) {
-        fprintf(stderr, "device_manager: dev %d (%s) 打开失败——回 DISCONNECTED 让用户重试\n",
+        fprintf(stderr, "device_manager: dev %d (%s) open failed -- back to DISCONNECTED, user can retry\n",
                 dev_idx, d->label);
         free(d->serial);
         d->serial = NULL;
@@ -348,7 +348,7 @@ int device_manager_connect_dev(device_manager_t *m, int dev_idx)
     at_session_open(d->at);
 
     d->state = DEV_STATE_READY;
-    fprintf(stderr, "device_manager: dev %d (%s) 已连接\n", dev_idx, d->label);
+    fprintf(stderr, "device_manager: dev %d (%s) connected\n", dev_idx, d->label);
     return 0;
 }
 
@@ -372,6 +372,6 @@ int device_manager_disconnect_dev(device_manager_t *m, int dev_idx)
         d->serial = NULL;
     }
     d->state = DEV_STATE_DISCONNECTED;
-    fprintf(stderr, "device_manager: dev %d (%s) 已断开\n", dev_idx, d->label);
+    fprintf(stderr, "device_manager: dev %d (%s) disconnected\n", dev_idx, d->label);
     return 0;
 }

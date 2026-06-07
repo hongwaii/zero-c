@@ -348,3 +348,43 @@ set_target_properties(test_llm_sse PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_llm_sse"
 )
+
+# test_llm_tool — P5 tool_call JSON 解析器单元测试（2 case）
+add_executable(test_llm_tool      test_llm_tool.c)
+target_link_libraries(test_llm_tool PRIVATE lib_llm_client)
+target_include_directories(test_llm_tool PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/llm_client
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_llm_tool PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_llm_tool"
+)
+
+# test_llm_client_mock — P5 LLM 客户端集成测试（mock HTTP server + SSE）
+add_executable(test_llm_client_mock test_llm_client_mock.c)
+target_link_libraries(test_llm_client_mock PRIVATE
+    lib_llm_client
+    libcurl_shared
+    ws2_32
+    crypt32
+)
+target_include_directories(test_llm_client_mock PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/llm_client
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/third_party/libcurl/include
+)
+target_compile_definitions(test_llm_client_mock PRIVATE _CRT_SECURE_NO_WARNINGS)
+set_target_properties(test_llm_client_mock PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_llm_client_mock"
+)
+# 运行时把 libcurl.dll 复制到 TEST 目录
+add_custom_command(TARGET test_llm_client_mock POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:libcurl_shared>"
+        "${TEST_DIST_DIR}/"
+    COMMENT "Copying libcurl.dll to TEST dist directory for test_llm_client_mock..."
+)

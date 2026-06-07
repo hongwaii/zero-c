@@ -6,7 +6,9 @@ set(MODULE_NAME lib_llm_client)
 add_library(${MODULE_NAME} STATIC
     llm_sse.c
     llm_dpapi.c
-    # llm_client.c / llm_tool.c / provider_config.c 在后续 task 追加
+    llm_client.c
+    llm_tool.c
+    # provider_config.c 在后续 task 追加
 )
 
 target_include_directories(${MODULE_NAME} PUBLIC
@@ -16,8 +18,10 @@ target_include_directories(${MODULE_NAME} PUBLIC
 
 target_link_libraries(${MODULE_NAME} PUBLIC
     libcurl_shared
+    third_cjson
+    third_libuv
 )
 
 if (WIN32)
-    target_link_libraries(${MODULE_NAME} PUBLIC crypt32)
+    target_link_libraries(${MODULE_NAME} PUBLIC crypt32 ws2_32)
 endif()

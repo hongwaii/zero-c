@@ -8,6 +8,7 @@ set(MY_SOURCES
     errstr.c
     json_reader.c
     json_writer.c
+    ringbuf.c
 )
 
 add_library(${MODULE_NAME} STATIC ${MY_SOURCES})

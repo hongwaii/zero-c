@@ -143,3 +143,18 @@ set_target_properties(test_i18n PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_i18n"
 )
+
+# test_ringbuf — ringbuf 字节环形缓冲单元测试
+add_executable(test_ringbuf test_ringbuf.c)
+target_link_libraries(test_ringbuf PRIVATE
+    lib_util
+)
+target_include_directories(test_ringbuf PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/lib/util
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_ringbuf PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_ringbuf"
+)

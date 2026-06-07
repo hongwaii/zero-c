@@ -19,4 +19,6 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     lib_util
     midware_serial
     third_libuv
+    # P6: at_session 收发字节时调 at_log_writer_add 落 at_log 表
+    lib_storage
 )

@@ -65,6 +65,19 @@ int at_session_send(at_session_t *s, const char *cmd, int timeout_ms,
 int at_session_register_urc(at_session_t *s, const char *prefix,
                             at_urc_cb cb, void *userdata);
 
+/**
+ * @brief 设置会话所属设备 ID（P6 at_log 标记用）。
+ *
+ * 在 at_session_create 之后、第一次收发前调用一次。device_id 会写进
+ * at_log 表的 device_id 字段，便于按设备查询历史。
+ *
+ * @param s   会话句柄
+ * @param id  设备 ID（device.id，如 "MDM-COM11"）；不能为 NULL
+ *
+ * 注意：内部固定 buffer 64 字节，id 超出部分截断。
+ */
+void at_session_set_device_id(at_session_t *s, const char *id);
+
 /* ---------- P4 扩展 API（diag_service 等需要绕过正常 AT 命令路径） ---------- */
 
 /**

@@ -359,6 +359,9 @@ int device_manager_connect_dev(device_manager_t *m, int dev_idx)
         return AGENT_ERR_OOM;
     }
     at_session_open(d->at);
+    /* P6: 把设备 ID 喂给 at_session，让收发字节落 at_log 时带 device_id。
+     * 必须在 at_session_open 之后、首次收发前调一次。 */
+    at_session_set_device_id(d->at, d->id);
 
     d->state = DEV_STATE_READY;
     fprintf(stderr, "device_manager: dev %d (%s) connected\n", dev_idx, d->label);

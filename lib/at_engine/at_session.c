@@ -15,6 +15,7 @@
 #include "at_parser.h"
 #include "agent_chan.h"
 #include "agent_types.h"
+#include "at_log_writer.h"
 #include "strbuf.h"
 
 #define WIN32_LEAN_AND_MEAN
@@ -65,6 +66,8 @@ struct at_session {
 
     urc_handler_t      urc_handlers[URC_HANDLERS_MAX];
     int                urc_count;
+
+    char               device_id[64];   /* P6: 给 at_log 标记设备来源 */
 };
 
 /* ---------- 队列工具 ---------- */
@@ -137,6 +140,10 @@ static void try_send_next(at_session_t *s)
             complete_current(s, false);
             return;
         }
+        /* P6: 落库——raw 字节不可打印时不强行转换，记下 hex 不现实，v1.0
+         * 简化：把 cmd[] 作为可读替代（is_raw 路径 cmd[] 为空串，故只在
+         * raw 路径下记录为说明性占位，避免显示空字符串）。 */
+        at_log_writer_add(s->device_id, "TX", front->cmd[0] ? front->cmd : "<raw>");
     } else {
         char buf[256];
         int n = snprintf(buf, sizeof(buf), "%s\r", front->cmd);
@@ -146,6 +153,8 @@ static void try_send_next(at_session_t *s)
             complete_current(s, false);
             return;
         }
+        /* P6: 落库——记录发出去的纯 cmd（去掉 \r，让 UI/HTML 报告更干净） */
+        at_log_writer_add(s->device_id, "TX", front->cmd);
     }
     s->in_flight = true;
     /* 必须传 on_cmd_timeout——NULL 会让 libuv 静默无效，timer 永远不 fire，
@@ -209,14 +218,18 @@ static void on_chan_rx(void *userdata, const uint8_t *buf, size_t len)
         if (at_parser_feed(buf[i], &line)) {
             switch (line.type) {
             case AT_LINE_FINAL_OK:
+                at_log_writer_add(s->device_id, "RX", line.line);
                 complete_current(s, true);
                 try_send_next(s);
                 break;
             case AT_LINE_FINAL_ERROR:
+                at_log_writer_add(s->device_id, "RX", line.line);
                 complete_current(s, false);
                 try_send_next(s);
                 break;
             case AT_LINE_URC:
+                /* P6: 设备主动上报单独标 "URC" 方向（vs "RX" 命令响应） */
+                at_log_writer_add(s->device_id, "URC", line.line);
                 /* URC 优先尝试按订阅前缀派发；没匹配上则当作 data 行
                  * 累积到当前在飞命令的 result（如 AT+CSQ 的响应 +CSQ: 23,99）。 */
                 if (!dispatch_urc(s, line.line, line.len)) {
@@ -224,6 +237,7 @@ static void on_chan_rx(void *userdata, const uint8_t *buf, size_t len)
                 }
                 break;
             case AT_LINE_DATA:
+                at_log_writer_add(s->device_id, "RX", line.line);
                 accumulate_data(s, line.line, line.len);
                 break;
             default:
@@ -245,9 +259,21 @@ at_session_t *at_session_create(uv_loop_t *loop, struct modem_chan *chan)
     if (!s) return NULL;
     s->loop = loop;
     s->chan = chan;
+    strncpy(s->device_id, "unknown", sizeof(s->device_id) - 1);
+    s->device_id[sizeof(s->device_id) - 1] = '\0';
     chan->on_rx = on_chan_rx;
     chan->userdata = s;
     return s;
+}
+
+/**
+ * @brief 设置设备 ID（用于 P6 at_log 标记）。NULL 静默忽略。
+ */
+void at_session_set_device_id(at_session_t *s, const char *id)
+{
+    if (!s || !id) return;
+    strncpy(s->device_id, id, sizeof(s->device_id) - 1);
+    s->device_id[sizeof(s->device_id) - 1] = '\0';
 }
 
 /**

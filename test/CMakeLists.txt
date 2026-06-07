@@ -204,3 +204,15 @@ set_target_properties(test_at_session PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_at_session"
 )
+
+# test_diag_state — diag_state 字段读写测试
+add_executable(test_diag_state test_diag_state.c)
+target_link_libraries(test_diag_state PRIVATE lib_diag_service)
+target_include_directories(test_diag_state PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib/diag_service
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_diag_state PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_diag_state"
+)

@@ -21,6 +21,8 @@ struct uv_loop_s;
 
 /* device_manager 前向声明：完整定义在 lib/device_manager/device_manager.h */
 struct device_manager;
+struct diag_service;
+typedef struct diag_service diag_service_t;
 
 /* Theme */
 typedef enum {
@@ -66,6 +68,9 @@ typedef struct agent_app {
     struct uv_loop_s *uv_loop;
     /* 多模组 manager（host 启动后由 core/main.cpp 注入） */
     struct device_manager *device_manager;
+    /* P3: 诊断服务 + 当前活动 AT 会话（panel_diag 收发 AT 用） */
+    diag_service_t        *diag_service;
+    struct at_session     *active_at;
 } agent_app_t;
 
 /* Render function signature every panel implements. */

@@ -97,3 +97,4 @@
 add_subdirectory(util)
 add_subdirectory(device_manager)
 add_subdirectory(at_engine)
+add_subdirectory(diag_service)

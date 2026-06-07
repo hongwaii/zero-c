@@ -7,6 +7,8 @@
  */
 #include "device_manager.h"
 #include "ncm_chan.h"
+#include "serial_chan.h"
+#include "at_session.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -187,4 +189,76 @@ void device_manager_set_callback(device_manager_t *m, dev_change_fn fn, void *us
     if (!m) return;
     m->on_change = fn;
     m->userdata = userdata;
+}
+
+/**
+ * @brief 把指定设备连上：分配 serial_chan + 打开 + 创建 at_session + 切 READY。
+ *
+ * P3 暂只支持 com:// 通道；NCM/RNDIS 留给后续。
+ *
+ * @param m       manager
+ * @param dev_idx 设备索引（0..dev_count-1）
+ * @return 0 成功；负数见 agent_errstr
+ */
+int device_manager_connect_dev(device_manager_t *m, int dev_idx)
+{
+    if (!m || dev_idx < 0 || dev_idx >= m->dev_count) return AGENT_ERR_BAD_ARG;
+    modem_dev_t *d = &m->devs[dev_idx];
+    if (d->at || d->serial) return AGENT_ERR_BAD_ARG;  /* 已连接 */
+
+    /* 只支持 COM 串口 */
+    if (strncmp(d->chan_uri, "com://", 6) != 0) {
+        fprintf(stderr, "device_manager: 暂只支持 com:// 通道（%s）\n", d->chan_uri);
+        return AGENT_ERR_BAD_ARG;
+    }
+
+    /* 分配 serial_chan + 打开 */
+    d->serial = serial_chan_create(m->loop);
+    if (!d->serial) return AGENT_ERR_OOM;
+    modem_chan_t *chan = &d->serial->chan;
+    if (serial_chan_open(chan, d->chan_uri) != 0) {
+        free(d->serial);
+        d->serial = NULL;
+        d->state = DEV_STATE_ERROR;
+        return AGENT_ERR_IO;
+    }
+
+    /* 分配 at_session */
+    d->at = at_session_create(m->loop, chan);
+    if (!d->at) {
+        serial_chan_close(chan);
+        free(d->serial);
+        d->serial = NULL;
+        d->state = DEV_STATE_ERROR;
+        return AGENT_ERR_OOM;
+    }
+    at_session_open(d->at);
+
+    d->state = DEV_STATE_READY;
+    fprintf(stderr, "device_manager: dev %d (%s) 已连接\n", dev_idx, d->label);
+    return 0;
+}
+
+/**
+ * @brief 断开指定设备：关 at_session、关串口、释放内存、切回 DISCONNECTED。
+ */
+int device_manager_disconnect_dev(device_manager_t *m, int dev_idx)
+{
+    if (!m || dev_idx < 0 || dev_idx >= m->dev_count) return AGENT_ERR_BAD_ARG;
+    modem_dev_t *d = &m->devs[dev_idx];
+    if (!d->at && !d->serial) return AGENT_ERR_BAD_ARG;
+
+    if (d->at) {
+        at_session_close(d->at);
+        free(d->at);
+        d->at = NULL;
+    }
+    if (d->serial) {
+        serial_chan_close(&d->serial->chan);
+        free(d->serial);
+        d->serial = NULL;
+    }
+    d->state = DEV_STATE_DISCONNECTED;
+    fprintf(stderr, "device_manager: dev %d (%s) 已断开\n", dev_idx, d->label);
+    return 0;
 }

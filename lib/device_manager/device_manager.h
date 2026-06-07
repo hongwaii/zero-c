@@ -12,6 +12,17 @@
 
 #define DEV_MANAGER_MAX_DEVS 16
 
+struct uv_loop_s;
+typedef struct uv_loop_s uv_loop_t;
+struct uv_timer_s;
+typedef struct uv_timer_s uv_timer_t;
+
+/* 前向声明：公共头不引 at_engine/serial_chan 头，避免传递依赖膨胀 */
+struct serial_chan;
+struct at_session;
+typedef struct serial_chan serial_chan_t;
+typedef struct at_session at_session_t;
+
 typedef enum {
     DEV_STATE_DISCONNECTED = 0,  /* 链路层发现，未打开通道 */
     DEV_STATE_READY,              /* 通道已打开 */
@@ -25,17 +36,15 @@ typedef struct modem_dev {
     char          ipv4[16];
     dev_state_t   state;
     int           csq;        /* 0~31；P2 留 0，P3 填 */
+    at_session_t  *at;         /* connect 时分配 */
+    serial_chan_t *serial;     /* connect 时分配 */
+    char          diag_last_update[32]; /* "12:34:56" 或 "-" */
 } modem_dev_t;
 
 typedef struct {
     modem_dev_t devs[DEV_MANAGER_MAX_DEVS];
     int         count;
 } dev_list_snapshot_t;
-
-struct uv_loop_s;
-typedef struct uv_loop_s uv_loop_t;
-struct uv_timer_s;
-typedef struct uv_timer_s uv_timer_t;
 
 typedef void (*dev_change_fn)(void *userdata, const dev_list_snapshot_t *snapshot);
 
@@ -61,5 +70,7 @@ int  device_manager_start      (device_manager_t *m);
 void device_manager_stop       (device_manager_t *m);
 int  device_manager_force_scan (device_manager_t *m);
 void device_manager_set_callback(device_manager_t *m, dev_change_fn fn, void *userdata);
+int  device_manager_connect_dev   (device_manager_t *m, int dev_idx);
+int  device_manager_disconnect_dev(device_manager_t *m, int dev_idx);
 
 #endif

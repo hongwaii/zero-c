@@ -54,6 +54,7 @@ if /i "%ARG1%"=="clear" set "BUILD_MODE=clean" & goto :dispatch_done
 if /i "%ARG1%"=="help"  set "BUILD_MODE=help"  & goto :dispatch_done
 if /i "%ARG1%"=="-h"    set "BUILD_MODE=help"  & goto :dispatch_done
 if /i "%ARG1%"=="--help" set "BUILD_MODE=help"  & goto :dispatch_done
+if /i "%ARG1%"=="package" set "BUILD_MODE=package" & goto :do_package
 echo [ERROR] Unknown argument: %ARG1%
 echo Use 'build.bat help' for usage.
 exit /b 1
@@ -76,6 +77,7 @@ echo    build.bat test         Build test only   -^> %TEST_TARGET%
 echo    build.bat shell        Build shell-only  (AGENT_SHELL_ONLY=1, mock backend)
 echo    build.bat clean        Remove all build artifacts (out/)
 echo    build.bat clear        Same as clean
+echo    build.bat package      Build Windows installer (Inno Setup) -^> dist\agent-setup-1.1.0.exe
 echo    build.bat help         Show this help
 echo.
 echo  PRODUCT:
@@ -265,5 +267,72 @@ goto :done_end
 
 :done_end
 echo.
+endlocal
+exit /b 0
+
+REM ============================================================
+REM  Mode: PACKAGE (Inno Setup)
+REM ============================================================
+:do_package
+echo.
+echo ============================================================
+echo  Modem Agent Installer Build
+echo ============================================================
+echo  Version : %VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH%
+echo  Output  : dist\agent-setup-%VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH%.exe
+echo ============================================================
+echo.
+
+REM ---- 探测 iscc.exe（PATH 或 Inno Setup 标准安装位置） ---------
+set "ISCC_EXE="
+where iscc >nul 2>&1
+if errorlevel 1 goto :iscc_not_in_path
+set "ISCC_EXE=iscc"
+goto :iscc_found
+:iscc_not_in_path
+if exist "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" set "ISCC_EXE=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+if exist "C:\Program Files\Inno Setup 6\ISCC.exe" set "ISCC_EXE=C:\Program Files\Inno Setup 6\ISCC.exe"
+:iscc_found
+
+if "%ISCC_EXE%"=="" goto :iscc_missing
+
+REM ---- 探测 build 产物（必须先 build 一次） ---------------------
+if not exist "%OUT_DIR%\%PRODUCT_NAME%\%APP_TARGET%" goto :build_missing
+
+REM ---- 准备 dist 目录 -------------------------------------------
+if not exist "%ROOT_DIR%\dist" mkdir "%ROOT_DIR%\dist"
+
+REM ---- 调 iscc 编译 --------------------------------------------
+echo [ISCC] Compiling installer via %ISCC_EXE% ...
+"%ISCC_EXE%" /DMyAppVersion=%VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH% "%ROOT_DIR%\tools\installer\agent.iss"
+if not errorlevel 1 goto :package_ok
+echo.
+echo [ERROR] Inno Setup compilation failed.
+exit /b 1
+
+:iscc_missing
+echo [ERROR] Inno Setup 6 (iscc.exe) not found.
+echo.
+echo  Install Inno Setup 6 from: https://jrsoftware.org/isdl.php
+echo.
+echo  After install, either:
+echo    1) Re-run 'build.bat package' (iscc on PATH)
+echo    2) Or run manually:
+echo       "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" tools\installer\agent.iss
+echo       /DMyAppVersion=%VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH%
+echo.
+exit /b 1
+
+:build_missing
+echo [ERROR] Build output not found: %OUT_DIR%\%PRODUCT_NAME%\%APP_TARGET%
+echo Run 'build.bat' first, then 'build.bat package'.
+exit /b 1
+
+:package_ok
+echo.
+echo ============================================================
+echo  INSTALLER BUILD SUCCESS
+echo  Output : dist\agent-setup-%VERSION_MAJOR%.%VERSION_MINOR%.%VERSION_PATCH%.exe
+echo ============================================================
 endlocal
 exit /b 0

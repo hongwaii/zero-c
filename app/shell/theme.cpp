@@ -151,16 +151,26 @@ static void *load_system_font_ttf(const wchar_t *face_name, size_t *out_size)
 
 /**
  * @brief 三级 fallback：文件 → 系统字体 → 默认 + 警告。
- * @return 0 成功（含 fallback 情况），-1 默认字体也没注册（极不应该）。
+ *
+ * 关键：每级捕获 ImGui::AddFont*() 返回的 ImFont*，最后显式设置
+ * io.FontDefault——ImGui **不会**自动跨 Fonts[] 数组搜索 glyph，
+ * 必须告诉它当前用哪个字体。CJK 字体作为 default 后，英文/中文都用
+ * 同一个字体渲染（CJK 字体本身也含 ASCII glyph）。
+ *
+ * @return 0 成功（含 fallback 情况）。
  */
 int theme_load_fonts(void)
 {
     ImGuiIO &io = ImGui::GetIO();
 
-    /* 第一步：始终注册默认字体（避免 fonts atlas 为空导致首帧渲染失败）。 */
-    io.Fonts->AddFontDefault();
+    /* 第一步：始终注册默认字体（ProggyClean, ASCII only），保证 fonts atlas 非空。
+     * 这是 fallback 失败时的"安全网"——保证启动时至少能渲染。 */
+    ImFont *default_font = io.Fonts->AddFontDefault();
 
-    /* 第二步：尝试 assets/fonts/cn.otf（用户自放 / 未来 P6 打包）。 */
+    /* 后续要用的 CJK 字体指针，先置 NULL。 */
+    ImFont *cjk_font = NULL;
+
+    /* 第二步：尝试 assets/fonts/cn.otf（用户自放 / 未来 P6 打包自带）。 */
     {
         FILE *f = std::fopen("assets/fonts/cn.otf", "rb");
         if (f) {
@@ -168,35 +178,51 @@ int theme_load_fonts(void)
             ImFontConfig cfg;
             cfg.OversampleH = 2;
             cfg.OversampleV = 1;
-            io.Fonts->AddFontFromFileTTF("assets/fonts/cn.otf", 16.0f, &cfg,
+            cjk_font = io.Fonts->AddFontFromFileTTF(
+                "assets/fonts/cn.otf", 16.0f, &cfg,
                 io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-            std::fprintf(stderr, "theme_load_fonts: 已加载 assets/fonts/cn.otf\n");
-            return 0;
+            if (cjk_font) {
+                std::fprintf(stderr,
+                    "theme_load_fonts: 已加载 assets/fonts/cn.otf 作为 CJK 字体。\n");
+            }
         }
     }
 
     /* 第三步：枚举 Windows 系统字体，挨个试候选 CJK 字体。 */
-    for (int i = 0; i < kCjkFontCandidateCount; i++) {
-        size_t size = 0;
-        void *ttf = load_system_font_ttf(kCjkFontCandidates[i], &size);
-        if (ttf) {
+    if (!cjk_font) {
+        for (int i = 0; i < kCjkFontCandidateCount; i++) {
+            size_t size = 0;
+            void *ttf = load_system_font_ttf(kCjkFontCandidates[i], &size);
+            if (!ttf) continue;
+
             ImFontConfig cfg;
             cfg.OversampleH = 2;
             cfg.OversampleV = 1;
-            io.Fonts->AddFontFromMemoryTTF(ttf, (int)size, 16.0f, &cfg,
+            cjk_font = io.Fonts->AddFontFromMemoryTTF(
+                ttf, (int)size, 16.0f, &cfg,
                 io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-            char aname[128];
-            wname_to_ansi(kCjkFontCandidates[i], aname, sizeof(aname));
-            std::fprintf(stderr,
-                "theme_load_fonts: assets/fonts/cn.otf 缺失，已用系统字体 '%s' "
-                "(%zu bytes) 提供中文渲染。\n", aname, size);
-            return 0;
+            if (cjk_font) {
+                char aname[128];
+                wname_to_ansi(kCjkFontCandidates[i], aname, sizeof(aname));
+                std::fprintf(stderr,
+                    "theme_load_fonts: assets/fonts/cn.otf 缺失，已用系统字体 '%s' "
+                    "(%zu bytes) 提供中文渲染。\n", aname, size);
+                break;  /* 找到一个就够了，不再继续试 */
+            }
+            /* 加载失败继续下一个候选（ImGui 接管 buffer 所有权，失败不 free） */
         }
     }
 
-    /* 第四步：都失败 → 默认字体 + 警告。 */
-    std::fprintf(stderr,
-        "theme_load_fonts: 既无 assets/fonts/cn.otf 也无系统 CJK 字体，"
-        "中文将显示为方块。\n");
+    /* 关键：设置 io.FontDefault——决定 ImGui 用哪个字体渲染所有文本。
+     *  CJK 字体本身也含 ASCII glyph，所以英文字符也用 CJK 字体渲染没问题。 */
+    if (cjk_font) {
+        io.FontDefault = cjk_font;
+    } else {
+        io.FontDefault = default_font;
+        std::fprintf(stderr,
+            "theme_load_fonts: 既无 assets/fonts/cn.otf 也无系统 CJK 字体，"
+            "中文将显示为方块。\n");
+    }
+
     return 0;
 }

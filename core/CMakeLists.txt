@@ -22,6 +22,7 @@ target_link_libraries(${PRODUCT_NAME} PRIVATE
     app_shell
     lib_util
     lib_device_manager   # 新加
+    lib_diag_service      # 新加：main.cpp 调 diag_service_create
     third_imgui
     third_cjson
     third_libuv

@@ -11,12 +11,13 @@
 #include "agent_types.h"
 #include "panel_settings.h"
 
-/* device_manager.h 是 C 头；本文件是 C++，需 extern "C" 包裹避免符号 mangling。
- * 用 extern "C" 块包 include 不会影响 device_manager_t 内的 uv_loop_t *
- * 字段类型（仍按 C 约定解释为指向 C struct 的指针），仅保证函数符号是 C
- * 链接。 */
+/* device_manager.h / diag_service.h 是 C 头；本文件是 C++，需 extern "C"
+ * 包裹避免符号 mangling。用 extern "C" 块包 include 不会影响内部
+ * uv_loop_t * 字段类型（仍按 C 约定解释为指向 C struct 的指针），仅保证
+ * 函数符号是 C 链接。 */
 extern "C" {
 #include "device_manager.h"
+#include "diag_service.h"
 }
 
 static agent_app_t g_app;
@@ -60,6 +61,14 @@ int main(void)
     /* 把 device_manager 注入 app——panel_devices 每帧从这里读 dev 列表 */
     g_app.device_manager = &g_devmgr;
     g_app.uv_loop = host_get_uv_loop(ctx);
+
+    /* 诊断服务：挂在 device_manager 上，UI 触发 refresh。
+     * P3 简化：本 task 不在启动时主动 refresh——由 panel_diag 的"刷新"按钮
+     * 调 diag_service_refresh_now() 拉一次（或者后续在 dev_change 回调里
+     * 调）。这里只把对象建出来注入 g_app，让 panel_diag 后续能找到。 */
+    static diag_service_t *g_diag = NULL;
+    g_diag = diag_service_create(host_get_uv_loop(ctx), &g_devmgr);
+    g_app.diag_service = g_diag;
 
     main_window_register_panels();
 

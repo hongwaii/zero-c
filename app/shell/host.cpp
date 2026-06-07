@@ -220,3 +220,13 @@ void host_destroy(host_ctx_t *c)
 }
 
 void host_request_quit(host_ctx_t *c) { if (c) c->quit = true; }
+
+/**
+ * @brief 取 host 内部的 libuv loop 指针。
+ * 公共头只前向声明 uv_loop_t；这里完整定义可见。
+ */
+uv_loop_t *host_get_uv_loop(host_ctx_t *ctx)
+{
+    if (!ctx) return NULL;
+    return ctx->uv_loop;
+}

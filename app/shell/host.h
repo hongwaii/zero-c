@@ -26,4 +26,12 @@ void host_destroy(host_ctx_t *ctx);
 /* Request shutdown (e.g. from inside tick). */
 void host_request_quit(host_ctx_t *ctx);
 
+/**
+ * @brief 取 host 内部的 libuv loop 指针。
+ *
+ * core/main.cpp 等"知道 host_ctx_t 但看不到 struct 定义"的地方
+ * 拿 uv_loop 必须走这个 getter，不能直接访问 struct 字段。
+ */
+uv_loop_t *host_get_uv_loop(host_ctx_t *ctx);
+
 #endif

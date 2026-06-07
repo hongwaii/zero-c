@@ -47,15 +47,17 @@ int main(void)
     }
 
     /* 启动 device_manager（用 host 的 uv_loop）。
-     * 注意：host_ctx 是 opaque struct，loop 指针的获取需要 host.h 暴露
-     * getter（待 P2-T8 在 host.h 加 host_get_uv_loop()，这里改用该 getter）。
-     * 现在用 NULL 占位——init 内部走 NULL 分支，扫描不会启动；P2-T8 拿到
-     * getter 后会接上真正的 host loop，扫描 timer 才生效。 */
+     * host_ctx 是 opaque struct，loop 指针走 host_get_uv_loop() 取，
+     * 不直接戳 struct 字段。device_manager_init 接受 NULL loop 时
+     * 不崩但不会真正起 timer；这里把 host 的 loop 传进去，start 之后
+     * 扫描 timer 才会真的在 host 的 uv_run(NOWAIT) 上 tick。
+     * 注：plan 里提的 g_app.device_manager 字段目前不在 agent_app_t
+     * 内——P2-T8 接入 panel_devices 时再补该字段并赋值。 */
     static device_manager_t g_devmgr;
-    (void)device_manager_init(&g_devmgr, NULL);
+    device_manager_init(&g_devmgr, host_get_uv_loop(ctx));
     device_manager_set_callback(&g_devmgr, NULL, NULL);  /* P2-T8 接入 panel_devices */
-    /* device_manager_start(&g_devmgr); */  /* 等 P2-T8 拿到真 loop 再 start */
-    /* g_app.uv_loop = host_get_uv_loop(ctx); */  /* P2-T8 接入 panels */
+    device_manager_start(&g_devmgr);
+    g_app.uv_loop = host_get_uv_loop(ctx);
 
     main_window_register_panels();
 

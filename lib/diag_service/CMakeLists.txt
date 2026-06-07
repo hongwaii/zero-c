@@ -5,7 +5,8 @@ add_library(${MODULE_NAME} STATIC
     diag_ping.c
     diag_ssl.c
     diag_sms.c
-    # diag_log.c / diag_health.c 在后续 task 追加
+    diag_log.c
+    # diag_health.c 在后续 task 追加
 )
 target_include_directories(${MODULE_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -23,4 +24,6 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     third_libuv
     # SSL probe 用 —— 实际 target 名是 libcurl_shared
     libcurl_shared
+    # diag_log 压 zip 用
+    third_miniz
 )

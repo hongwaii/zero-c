@@ -122,9 +122,10 @@ target_include_directories(third_miniz PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/miniz
 )
 target_compile_definitions(third_miniz PRIVATE
-    MINIZ_NO_ARCHIVE_WRITING_API=0   # 我们需要 zip 写
-    MINIZ_NO_ARCHIVE_READING_API=0   # 健康检查读 log 时可能用
-    MINIZ_NO_STDIO=0                 # 默认开 fopen，方便落盘
+    # 注意：miniz 头里用的是 MINIZ_NO_ARCHIVE_WRITING_APIS（带 S，复数），
+    # MINIZ_NO_STDIO 等。这些宏一旦定义即关闭对应功能；不定义 = 开启。
+    # 之前误写成 =0 反而触发了 #ifndef 的 false 分支，导致 zip 写 API 被关。
+    # 实际：什么都不定义就是 zip 写 + stdio 全开，正好是我们要的。
 )
 ######################## miniz   end ########################
 

@@ -288,3 +288,18 @@ set_target_properties(test_diag_sms PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_diag_sms"
 )
+
+# test_diag_log — P4 模组 log 抓取（只测 miniz 压 zip 流程，不依赖 at_session）
+add_executable(test_diag_log test_diag_log.c)
+target_link_libraries(test_diag_log PRIVATE
+    lib_diag_service       # 提供 miniz include
+    third_miniz            # MinGW/Clang 静态库不传递依赖，显式链
+)
+target_include_directories(test_diag_log PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib/diag_service
+    ${CMAKE_SOURCE_DIR}/include
+)
+set_target_properties(test_diag_log PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_diag_log"
+)

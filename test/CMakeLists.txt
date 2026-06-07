@@ -172,3 +172,16 @@ set_target_properties(test_ncm_enumerate PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
     OUTPUT_NAME "test_ncm_enumerate"
 )
+
+# test_at_parser — AT 行解析器单元测试
+add_executable(test_at_parser test_at_parser.c)
+target_link_libraries(test_at_parser PRIVATE lib_at_engine)
+target_include_directories(test_at_parser PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib/at_engine
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/lib/util
+)
+set_target_properties(test_at_parser PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_at_parser"
+)

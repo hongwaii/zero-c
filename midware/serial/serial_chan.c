@@ -193,7 +193,7 @@ static void on_async_wake(uv_async_t *handle)
  * @brief 打开串口并启动 reader 线程 + uv_async。
  * @return AGENT_OK 成功；负错误码。
  */
-int serial_chan_open(modem_chan_t *self, const char *uri)
+int serial_chan_open_impl(modem_chan_t *self, const char *uri)
 {
     if (!self || !self->impl || !uri) return AGENT_ERR_BAD_ARG;
     serial_chan_t *sc = (serial_chan_t *)self->impl;
@@ -265,7 +265,7 @@ int serial_chan_open(modem_chan_t *self, const char *uri)
  * @brief 同步 WriteFile 发数据。
  * @return AGENT_OK 成功；负错误码。
  */
-int serial_chan_send(modem_chan_t *self, const uint8_t *buf, size_t len)
+int serial_chan_send_impl(modem_chan_t *self, const uint8_t *buf, size_t len)
 {
     if (!self || !self->impl || !buf || len == 0) return AGENT_ERR_BAD_ARG;
     if (!self->is_open) return AGENT_ERR_IO;
@@ -293,7 +293,7 @@ int serial_chan_send(modem_chan_t *self, const uint8_t *buf, size_t len)
  * 6 步顺序：stop_flag → CancelIo → 等线程 → 关 HANDLE → 关 async → 释放 ringbuf。
  * 必须先 CancelIo 再 WaitForSingleObject，否则 reader 线程会一直阻塞在 ReadFile。
  */
-void serial_chan_close(modem_chan_t *self)
+void serial_chan_close_impl(modem_chan_t *self)
 {
     if (!self || !self->impl || !self->is_open) return;
     serial_chan_t *sc = (serial_chan_t *)self->impl;
@@ -340,6 +340,17 @@ void serial_chan_close(modem_chan_t *self)
     fprintf(stderr, "serial_chan: closed %s\n", sc->name);
 }
 
+/* === ops 虚表（at_session 通过 modem_chan_send -> ops->send 调到我们） === */
+int  serial_chan_open_impl(modem_chan_t *self, const char *uri);
+int  serial_chan_send_impl(modem_chan_t *self, const uint8_t *buf, size_t len);
+void serial_chan_close_impl(modem_chan_t *self);
+
+static const modem_chan_ops_t s_serial_ops = {
+    .open  = serial_chan_open_impl,
+    .send  = serial_chan_send_impl,
+    .close = serial_chan_close_impl,
+};
+
 /**
  * @brief 分配 + 零初始化 serial_chan_t。
  * @param loop libuv 主循环（弱引用，串口 close 前 loop 不能销毁）。
@@ -352,7 +363,20 @@ serial_chan_t *serial_chan_create(uv_loop_t *loop)
     if (!sc) return NULL;
     sc->loop = loop;
     sc->chan.impl = sc;
+    sc->chan.ops = &s_serial_ops;  /* 新加：vtable 让 modem_chan_send 找到我们的 send */
     sc->handle = INVALID_HANDLE_VALUE;
     sc->chan.is_open = false;
     return sc;
 }
+
+/* === 公共 API 包装（device_manager.c 等直接调用者用） === */
+
+/* 公共头声明的旧名透传到 _impl，避免破坏外部调用方链接。 */
+int  serial_chan_open (modem_chan_t *self, const char *uri)
+{ return serial_chan_open_impl(self, uri); }
+
+int  serial_chan_send (modem_chan_t *self, const uint8_t *buf, size_t len)
+{ return serial_chan_send_impl(self, buf, len); }
+
+void serial_chan_close(modem_chan_t *self)
+{ serial_chan_close_impl(self); }

@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SCAN_INTERVAL_MS 2000
+#define SCAN_INTERVAL_MS 500   /* 0.5s 扫描——插拔 COM/NCM 模组更快响应 */
 #define MAX_SCAN_RESULT  64
 
 /* === 工具：列 COM 端口 === */

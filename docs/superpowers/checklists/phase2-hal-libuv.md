@@ -16,17 +16,17 @@
 ### 启动 / stderr 验证
 
 - [ ] 启动 EXE（不带 `AGENT_DEBUG_CONSOLE=1`）：无额外 console 窗口弹出
-- [ ] stderr（或 debug console）看到一行：`device_manager: 启动扫描，间隔 2000 ms`
+- [ ] stderr（或 debug console）看到一行：`device_manager: 启动扫描，间隔 500 ms`
 
 ### 未插任何模组
 
 - [ ] 切到"多模组"面板
-- [ ] 表格区域显示 `暂未发现模组——插上 COM 或 USB-NCM 模组等待 2 秒`
-- [ ] 每 2s stderr 打印 `device_manager: 扫描 diff — COM +0/-0, NCM +0/-0 → 共 0 设备`
+- [ ] 表格区域显示 `暂未发现模组——插上 COM 或 USB-NCM 模组等待 0.5 秒`
+- [ ] 每 0.5s stderr 打印 `device_manager: 扫描 diff — COM +0/-0, NCM +0/-0 → 共 0 设备`
 
 ### 插上 COM 模组
 
-- [ ] 插上后 ≤ 2s，表格自动出现一行：
+- [ ] 插上后 ≤ 0.5s，表格自动出现一行：
   - 名称 = `COM 7`（或实际端口号）
   - 端口/URI 列 = `com://COM7?baud=115200`
   - IP 列 = `-`
@@ -34,12 +34,12 @@
   - 状态 = `DISCONNECTED`
   - 最后在线 = `-`
 - [ ] stderr 打印 `device_manager: 扫描 diff — COM +1/-0, NCM +0/-0 → 共 1 设备`
-- [ ] 拔出后 ≤ 2s，该行消失
+- [ ] 拔出后 ≤ 0.5s，该行消失
 - [ ] stderr 打印 `device_manager: 扫描 diff — COM +0/-1, NCM +0/-0 → 共 0 设备`
 
 ### 插上 USB-NCM 模组（如 Air724 / EC200N 等）
 
-- [ ] 插上后 ≤ 2s，表格自动出现一行：
+- [ ] 插上后 ≤ 0.5s，表格自动出现一行：
   - 名称含 `RNDIS` / `Mobile` / `NCM` 关键字
   - 端口/URI 列 = `rndis://<名字>`
   - IP 列 = 非空 IPv4（如 `10.42.0.7`）

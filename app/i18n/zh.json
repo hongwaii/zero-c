@@ -43,6 +43,7 @@
   "settings.llm.add": "新增",
   "settings.llm.save": "保存",
   "settings.serial.title": "串口预设",
+  "settings.serial.default_baud": "默认波特率",
   "settings.version": "版本",
   "llm.drawer.title": "AI 助手",
   "llm.drawer.placeholder": "问我关于这块模组的任何问题…",

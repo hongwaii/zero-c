@@ -10,5 +10,6 @@ target_include_directories(${MODULE_NAME} PUBLIC
 )
 target_link_libraries(${MODULE_NAME} PUBLIC
     app_shell
+    lib_device_manager       # 新加：panel 改 g_default_baud 需要链接 C 库解析符号
     third_imgui
 )

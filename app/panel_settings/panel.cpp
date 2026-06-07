@@ -11,6 +11,11 @@
 #include "version.h"
 #include <cstdio>
 
+/* 默认串口波特率，定义在 core/main.cpp（跨模块 extern 共享）。
+ * 在这里直接写：用户改 radio 立即生效（不重启），下次 device_manager
+ * 扫描重建 dev 时会用新 baud。已存在的 dev 不更新，P3 简化。 */
+extern int g_default_baud;
+
 /**
  * @brief 渲染设置 panel：主题 + LLM provider 列表 + 版本号。
  */
@@ -34,6 +39,30 @@ void panel_settings_render(agent_app_t *app)
     ImGui::RadioButton("中文", app->lang == AGENT_LANG_ZH_CN);
     ImGui::SameLine();
     ImGui::RadioButton("English (v1.1)", false);
+
+    ImGui::Separator();
+
+    /* ---- 串口默认波特率 ----
+     * P3 简化：UI 只暴露 9600 和 115200 两档——用户真模组 9600，原写死 115200
+     * 导致 AT 解不开；如需 19200/38400/57600 等再补。改了立即生效（写入
+     * g_default_baud 全局），但**已存在**的 dev 不重建 chan_uri，P3 简化：
+     * 改 baud 后让用户重插模组或等扫描重建。P4 再加 zh.json 持久化。 */
+    ImGui::Text("%s", i18n_get("settings.serial.default_baud"));
+    ImGui::SameLine();
+    /* 0=9600, 1=115200；初始按 g_default_baud 推断选中 */
+    static int s_baud_choice = -1;  /* -1 表示首次进入，按 g_default_baud 推断 */
+    if (s_baud_choice < 0) {
+        s_baud_choice = (g_default_baud == 115200) ? 1 : 0;
+    }
+    if (ImGui::RadioButton("9600", s_baud_choice == 0)) {
+        s_baud_choice = 0;
+        g_default_baud = 9600;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("115200", s_baud_choice == 1)) {
+        s_baud_choice = 1;
+        g_default_baud = 115200;
+    }
 
     ImGui::Separator();
 

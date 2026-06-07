@@ -22,6 +22,20 @@ extern "C" {
 
 static agent_app_t g_app;
 
+/**
+ * @brief 默认串口波特率。
+ *
+ * 真机用户模组是 9600 波特，原先在 device_manager.c 写死 115200，
+ * 导致 AT 命令在 9600 速率下解不出，超时返回 < ERROR。
+ * P3：硬编码 9600，settings panel 允许用户改 radio 立刻生效。
+ * P3.5：挪到 agent_app_t 字段。
+ * P4：从 zh.json 的 settings.serial.default_baud 读，覆盖此处。
+ *
+ * 跨模块共享（device_manager.c / panel_settings 都要读写），用 extern
+ * 链接——简单不优雅但够用。
+ */
+int g_default_baud = 9600;  /* 用户模组是 9600 波特 */
+
 static void tick(void *ud)
 {
     agent_app_t *app = (agent_app_t *)ud;
@@ -34,6 +48,8 @@ int main(void)
 
     /* 默认值：工程蓝 + zh-CN + 现场诊断 panel */
     memset(&g_app, 0, sizeof(g_app));
+    /* 默认波特率真机用户模组是 9600；P4 起从 zh.json 读 settings.serial.default_baud */
+    fprintf(stderr, "main: default_baud = %d\n", g_default_baud);
     g_app.theme        = AGENT_THEME_ENGINEERING_BLUE;
     g_app.lang         = AGENT_LANG_ZH_CN;
     g_app.active_panel = AGENT_PANEL_DIAG;

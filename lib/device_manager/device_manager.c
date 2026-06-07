@@ -17,6 +17,16 @@
 #include "serial_chan.h"
 #include "at_session.h"
 
+/**
+ * @brief 默认串口波特率（跨模块共享，定义在 core/main.cpp）。
+ *
+ * 通过 extern 引入，避免在公共头 agent_types.h 加字段污染所有模块。
+ * P3 简化：用户改 baud 后，只对**新**扫描出来的 dev 生效；已存在的 dev
+ * 要等下次扫描重建（插拔或 0.5s tick 检测到变化）才用新 baud。
+ * P3.5 计划：挪到 agent_app_t 字段上。
+ */
+extern int g_default_baud;
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <uv.h>
@@ -234,8 +244,11 @@ static void do_scan(uv_timer_t *handle)
         } else {
             snprintf(d->label, sizeof(d->label), "COM %s", com_now[i]);
         }
-        /* chan_uri 需要完整 "COM<n>" 形式，com:// + "COM" + 数字 */
-        snprintf(d->chan_uri, sizeof(d->chan_uri), "com://COM%s?baud=115200", com_now[i]);
+        /* chan_uri 需要完整 "COM<n>" 形式，com:// + "COM" + 数字；
+         * baud 用 g_default_baud（用户在 settings panel 选 9600 / 115200 等），
+         * 不再写死 115200——用户模组真机是 9600，写死会导致 AT 命令解不出。 */
+        snprintf(d->chan_uri, sizeof(d->chan_uri), "com://COM%s?baud=%d",
+                 com_now[i], g_default_baud);
         d->state = DEV_STATE_DISCONNECTED;
     }
     for (int i = 0; i < ncm_n && m->dev_count < DEV_MANAGER_MAX_DEVS; i++) {

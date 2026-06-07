@@ -96,8 +96,13 @@ void panel_settings_render(agent_app_t *app)
     }
 
     if (ImGui::Button(i18n_get("settings.llm.save"))) {
-        /* P1：仅打印一行；P6：写 JSON + DPAPI 加密 */
-        std::printf("[settings] LLM provider 配置已暂存（in-memory，P6 落盘）。\n");
+        /* P5：写 JSON + DPAPI 加密 api_key（hex 编码落盘） */
+        panel_settings_save_to_config(app);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(i18n_get("settings.llm.reload"))) {
+        /* 从 config 文件重新加载，丢弃当前 in-memory 修改 */
+        panel_settings_reload_from_config(app);
     }
 
     ImGui::Separator();

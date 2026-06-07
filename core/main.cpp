@@ -4,6 +4,9 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+/* P4 经验：MinGW <io.h> 把 mkdir 覆盖成单参数（_mkdir）版本；用 <direct.h>
+ * 的 _mkdir 显式拿到单参版本，<sys/stat.h> 的 POSIX mkdir 在 MinGW 下不可靠。 */
+#include <direct.h>
 #include "imgui.h"
 #include "host.h"
 #include "main_window.h"
@@ -54,6 +57,11 @@ int main(void)
      * 必须先于 host_create——SSL 探活可能由 panel_diag 立刻触发。 */
     diag_ssl_global_init();
     atexit(diag_ssl_global_cleanup);
+
+    /* P5: 确保 config/ 目录存在——panel_settings_seed_defaults 在文件不存在
+     * 时会 seed + save（llm_provider_config_load 内部触发），落盘前需要
+     * 这个目录。_mkdir 已存在返回 -1 忽略。MinGW _mkdir 单参版本。 */
+    _mkdir("config");
 
     /* 默认值：工程蓝 + zh-CN + 现场诊断 panel */
     memset(&g_app, 0, sizeof(g_app));

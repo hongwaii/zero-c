@@ -16,4 +16,16 @@ void panel_settings_render(agent_app_t *app);
  * @param app 全局 app context（持有 LLM provider 链表）。
  */
 void panel_settings_seed_defaults(agent_app_t *app);
+
+/**
+ * @brief 从 config/llm_providers.json 重新加载 LLM provider 列表到 app。
+ * @param app 全局 app context（持有 LLM provider 链表）。
+ */
+void panel_settings_reload_from_config(agent_app_t *app);
+
+/**
+ * @brief 把 app 当前 LLM provider 列表加密后写入 config/llm_providers.json。
+ * @param app 全局 app context（持有 LLM provider 链表）。
+ */
+void panel_settings_save_to_config(agent_app_t *app);
 #endif

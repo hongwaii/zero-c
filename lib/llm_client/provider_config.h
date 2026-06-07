@@ -10,6 +10,10 @@
 
 #include "agent_types.h"  /* agent_llm_provider_t */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* 5 厂商默认 seed。base_url / default_model 见 spec §4.5。 */
 int  llm_seed_defaults(agent_app_t *app);  /* 灌到 app->providers */
 
@@ -20,5 +24,9 @@ int  llm_provider_config_load(agent_app_t *app, const char *path);
 
 /* 把 app->providers 加密后写到 path（原子写）。返回 0=ok。 */
 int  llm_provider_config_save(const agent_app_t *app, const char *path);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

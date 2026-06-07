@@ -23,6 +23,7 @@ target_link_libraries(${PRODUCT_NAME} PRIVATE
     lib_util
     lib_device_manager   # 新加
     lib_diag_service      # 新加：main.cpp 调 diag_service_create
+    lib_llm_client        # P5: panel_settings_seed_defaults 调 llm_provider_config_load
     third_imgui
     third_cjson
     third_libuv

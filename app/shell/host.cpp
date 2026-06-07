@@ -18,6 +18,12 @@
 
 #include <uv.h>
 
+/* P4: 抓 log / 健康检查落盘需要 logs/ 目录；建一次即可（已存在不报错）
+ * MinGW 的 <io.h> 把 mkdir 覆盖成单参数（_mkdir）版本；
+ * 用 <sys/stat.h> 的 POSIX 版需要先关 _WIN32 / _CRTIMP_NO_EXPORTS，
+ * 简单办法：直接用 <direct.h> 的 _mkdir。已存在不报错。 */
+#include <direct.h>
+
 /* 主题与 i18n：theme_apply 在 ImGui 上下文创建后立即调用；theme_load_fonts
  * 在 ImGui backend init 之后、第一次 NewFrame 之前；i18n_init 紧随其后。 */
 
@@ -150,6 +156,11 @@ int host_create(host_ctx_t **out, const char *title, int width, int height)
     ImGui::CreateContext();
     ImGui_ImplWin32_Init(c->hwnd);
     ImGui_ImplDX11_Init(c->device, c->ctx);
+
+    /* P4: 启动时建 logs/ 目录（diag_log / diag_health 落盘用）。
+     * 已存在则返回 -1，忽略。_mkdir 是 MinGW <direct.h> 提供版（POSIX mkdir
+     * 在 MinGW 下被 <io.h> 覆盖成单参数）。 */
+    _mkdir("logs");
 
     /* 主题：上下文创建后立即应用，否则字体加载前的首帧会用默认色。 */
     theme_apply(AGENT_THEME_ENGINEERING_BLUE);

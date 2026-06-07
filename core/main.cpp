@@ -3,6 +3,7 @@
  * @brief 应用入口：ImGui + DX11 host + 主窗口。
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include "imgui.h"
 #include "host.h"
 #include "main_window.h"
@@ -18,6 +19,7 @@
 extern "C" {
 #include "device_manager.h"
 #include "diag_service.h"
+#include "diag_ssl.h"
 }
 
 static agent_app_t g_app;
@@ -45,6 +47,13 @@ static void tick(void *ud)
 int main(void)
 {
     agent_maybe_open_debug_console(__argc, __argv);
+
+    /* P4: libcurl 全局 init（SSL 探活用） + 注册 atexit 清理。
+     * diag_ssl_global_init 内部用计数器，多次调用幂等；
+     * 进程退出前 atexit 自动调 cleanup（curl_global_cleanup）。
+     * 必须先于 host_create——SSL 探活可能由 panel_diag 立刻触发。 */
+    diag_ssl_global_init();
+    atexit(diag_ssl_global_cleanup);
 
     /* 默认值：工程蓝 + zh-CN + 现场诊断 panel */
     memset(&g_app, 0, sizeof(g_app));

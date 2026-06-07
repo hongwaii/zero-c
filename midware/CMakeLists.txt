@@ -14,6 +14,9 @@
 # ---- HTTP client/server middleware ----
 add_subdirectory(http)
 
+# ---- Serial (COM port) channel middleware ----
+add_subdirectory(serial)
+
 # TODO: Add new modules here, e.g.:
 # add_subdirectory(mqtt)
 # add_subdirectory(websocket)

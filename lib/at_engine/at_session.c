@@ -38,6 +38,11 @@ typedef struct {
 /* 命令队列项 */
 typedef struct cmd_item {
     char            cmd[128];
+    /* P4 扩展：is_raw=true 时，raw_buf/raw_len 才是真发送内容；
+     * cmd[] 在此场景下未使用（保留 init 兼容）。 */
+    bool            is_raw;
+    uint8_t         raw_buf[256];
+    size_t          raw_len;
     int             timeout_ms;
     at_response_cb  cb;
     void           *userdata;
@@ -124,13 +129,23 @@ static void try_send_next(at_session_t *s)
     if (s->in_flight) return;
     cmd_item_t *front = queue_front(s);
     if (!front) return;
-    char buf[256];
-    int n = snprintf(buf, sizeof(buf), "%s\r", front->cmd);
-    if (n < 0 || n >= (int)sizeof(buf)) return;
-    if (modem_chan_send(s->chan, (const uint8_t *)buf, (size_t)n) != 0) {
-        fprintf(stderr, "at_session: chan send failed\n");
-        complete_current(s, false);
-        return;
+    if (front->is_raw) {
+        /* P4 路径：at_session_send_raw 入队的项——直接发 raw_buf，不加 \r。
+         * 用于 SMS Ctrl-Z 0x1A、二进制 PDU 等。 */
+        if (modem_chan_send(s->chan, front->raw_buf, front->raw_len) != 0) {
+            fprintf(stderr, "at_session: chan send (raw) failed\n");
+            complete_current(s, false);
+            return;
+        }
+    } else {
+        char buf[256];
+        int n = snprintf(buf, sizeof(buf), "%s\r", front->cmd);
+        if (n < 0 || n >= (int)sizeof(buf)) return;
+        if (modem_chan_send(s->chan, (const uint8_t *)buf, (size_t)n) != 0) {
+            fprintf(stderr, "at_session: chan send failed\n");
+            complete_current(s, false);
+            return;
+        }
     }
     s->in_flight = true;
     /* 必须传 on_cmd_timeout——NULL 会让 libuv 静默无效，timer 永远不 fire，
@@ -283,6 +298,8 @@ int at_session_send(at_session_t *s, const char *cmd, int timeout_ms,
     it->cb = cb;
     it->userdata = userdata;
     it->in_flight = false;
+    it->is_raw = false;        /* P4：at_session_send 走 cmd+"\r" 路径 */
+    it->raw_len = 0;
     strbuf_init(&it->result, RESULT_BUF_CAP);
     s->q_tail = (s->q_tail + 1) % CMD_QUEUE_MAX;
     s->q_count++;
@@ -304,4 +321,84 @@ int at_session_register_urc(at_session_t *s, const char *prefix,
     h->cb = cb;
     h->userdata = userdata;
     return 0;
+}
+
+/* ---------- P4 扩展 API（diag_service 等需要绕过正常 AT 命令路径） ---------- */
+
+/**
+ * @brief 取得会话绑定的 libuv loop。
+ * @return 内部 loop 指针；s 为 NULL 时返回 NULL。
+ */
+uv_loop_t *at_session_loop(at_session_t *s)
+{
+    return s ? s->loop : NULL;
+}
+
+/**
+ * @brief 取得会话绑定的 modem_chan。
+ * @return 内部 chan 指针；s 或内部 chan 为 NULL 时返回 NULL。
+ */
+struct modem_chan *at_session_chan(at_session_t *s)
+{
+    return (s && s->chan) ? s->chan : NULL;
+}
+
+/**
+ * @brief 直接发原始字节（不自动加 \r）——SMS Ctrl-Z / 二进制 PDU 用。
+ *
+ * 实现要点：
+ *   - 走 cmd 队列（仍受单 in_flight 约束）
+ *   - 入队时设 is_raw=true，try_send_next 走 raw_buf 路径
+ *   - 若 s->in_flight 已 true，返回 AGENT_ERR_BAD_ARG（单 in_flight 约束）
+ *   - 超时走 on_cmd_timeout → complete_current(s, false)，与正常 AT 同路径
+ *   - 收包：on_chan_rx 解析 FINAL_OK / FINAL_ERROR / DATA 累积，复用现有逻辑
+ *
+ * @param buf        原始字节（拷贝到 cmd_item.raw_buf，不持有调用方引用）
+ * @param len        字节数；超过 raw_buf 容量返回 AGENT_ERR_BAD_ARG
+ * @param timeout_ms 超时；<=0 用默认 3000ms
+ * @return AGENT_OK 或负错误码（AGENT_ERR_BAD_ARG / AGENT_ERR_OOM）。
+ */
+int at_session_send_raw(at_session_t *s, const uint8_t *buf, size_t len,
+                        int timeout_ms, at_response_cb cb, void *userdata)
+{
+    if (!s || !buf || len == 0) return AGENT_ERR_BAD_ARG;
+    if (len > sizeof(((cmd_item_t *)0)->raw_buf)) return AGENT_ERR_BAD_ARG;
+    if (s->q_count >= CMD_QUEUE_MAX) return AGENT_ERR_OOM;
+    if (s->in_flight) {
+        /* 单 in_flight 约束：与普通 send 共用同条队列，撞车直接拒绝。
+         * 调用方应等当前命令完成（cb 触发）后再发 raw。 */
+        return AGENT_ERR_BAD_ARG;
+    }
+    cmd_item_t *it = &s->queue[s->q_tail];
+    memcpy(it->raw_buf, buf, len);
+    it->raw_len = len;
+    it->is_raw = true;
+    it->cmd[0] = '\0';        /* is_raw 路径不用 cmd；置空仅防御 */
+    it->timeout_ms = (timeout_ms > 0) ? timeout_ms : 3000;
+    it->cb = cb;
+    it->userdata = userdata;
+    it->in_flight = false;
+    strbuf_init(&it->result, RESULT_BUF_CAP);
+    s->q_tail = (s->q_tail + 1) % CMD_QUEUE_MAX;
+    s->q_count++;
+    try_send_next(s);
+    return AGENT_OK;
+}
+
+/**
+ * @brief 在 chan 上挂一个外部 rx hook（覆盖默认的 at_session on_rx）。
+ *
+ * 简化实现：直接覆盖 chan->on_rx + userdata——挂第二个 hook 会丢第一个。
+ * 生产代码用 hook 链表（v1.1）。
+ *
+ * 注意：挂上后 at_session 的 cmd 路径不再收到 rx，URC 与 cmd 完成都不会触发。
+ * 解除需外部反向调用 at_session 内部——目前 diag_log 不解除。
+ */
+void at_session_install_rx_hook(at_session_t *s,
+                                void (*cb)(void *, const uint8_t *, size_t),
+                                void *userdata)
+{
+    if (!s || !s->chan) return;
+    s->chan->on_rx = cb;
+    s->chan->userdata = userdata;
 }

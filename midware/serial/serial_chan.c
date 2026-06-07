@@ -90,15 +90,34 @@ static HANDLE open_com_port_handle(const serial_params_t *p)
     /* Windows 串口需带 "\\\\.\\" 前缀以避免 COM10+ 被截断 */
     snprintf(full_name, sizeof(full_name), "\\\\.\\%s", p->name);
 
-    /* 同步 I/O（无 FILE_FLAG_OVERLAPPED）—— 工作线程用 ReadFile 阻塞读 */
-    HANDLE h = CreateFileA(
-        full_name,
-        GENERIC_READ | GENERIC_WRITE,
-        0, NULL, OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL);
+    /* CreateFile 带重试：ERROR_BUSY/ERROR_ACCESS_DENIED 多半是 kernel 还在清理前一个 handle
+     * （前一会话 Close 之后 kernel 释放需要数百 ms——Sleep(200) 兜底不一定够）。
+     * 重试 5 次 × 200ms ≈ 1s 上限，覆盖大多数情况。 */
+    HANDLE h = INVALID_HANDLE_VALUE;
+    for (int retry = 0; retry < 5; retry++) {
+        /* 同步 I/O（无 FILE_FLAG_OVERLAPPED）—— 工作线程用 ReadFile 阻塞读 */
+        h = CreateFileA(
+            full_name,
+            GENERIC_READ | GENERIC_WRITE,
+            0, NULL, OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            NULL);
+        if (h != INVALID_HANDLE_VALUE) break;
+
+        DWORD err = GetLastError();
+        if (err != ERROR_BUSY && err != ERROR_ACCESS_DENIED) {
+            /* 非"忙/拒绝访问"类错误——重试无意义，直接退出循环 */
+            break;
+        }
+        if (retry < 4) {
+            fprintf(stderr,
+                "serial_chan: CreateFile(%s) busy (err=%lu), retry %d/5 in 200ms\n",
+                full_name, err, retry + 1);
+            Sleep(200);
+        }
+    }
     if (h == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "serial_chan: CreateFile(%s) failed: %lu\n",
+        fprintf(stderr, "serial_chan: CreateFile(%s) failed: %lu (after 5 retries)\n",
                 full_name, GetLastError());
         return INVALID_HANDLE_VALUE;
     }

@@ -269,3 +269,22 @@ add_custom_command(TARGET test_diag_ssl POST_BUILD
         "${TEST_DIST_DIR}/"
     COMMENT "Copying libcurl.dll to TEST dist directory for test_diag_ssl..."
 )
+
+# test_diag_sms — P4 SMS 发送（mock at_session + 验证 4 步状态机）
+# 关键：不链 lib_at_engine；mock_at_session.c 提供 weak 符号覆盖。
+add_executable(test_diag_sms
+    test_diag_sms.c
+    mock_at_session.c
+)
+target_link_libraries(test_diag_sms PRIVATE
+    lib_diag_service
+)
+target_include_directories(test_diag_sms PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib/diag_service
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/lib/at_engine
+)
+set_target_properties(test_diag_sms PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TEST_DIST_DIR}"
+    OUTPUT_NAME "test_diag_sms"
+)

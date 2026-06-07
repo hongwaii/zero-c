@@ -4,7 +4,8 @@ add_library(${MODULE_NAME} STATIC
     diag_service.c
     diag_ping.c
     diag_ssl.c
-    # diag_sms.c / diag_log.c / diag_health.c 在后续 task 追加
+    diag_sms.c
+    # diag_log.c / diag_health.c 在后续 task 追加
 )
 target_include_directories(${MODULE_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

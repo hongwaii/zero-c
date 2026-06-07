@@ -39,8 +39,10 @@ typedef struct uv_timer_s uv_timer_t;
 
 typedef void (*dev_change_fn)(void *userdata, const dev_list_snapshot_t *snapshot);
 
-typedef struct {
-    uv_loop_t           *loop;
+/* 给 struct 命名（tag）以允许 agent_types.h 里前向声明 struct device_manager; */
+typedef struct device_manager device_manager_t;
+struct device_manager {
+    uv_loop_t           *loop;  /* 弱引用 */
     modem_dev_t          devs[DEV_MANAGER_MAX_DEVS];
     int                  dev_count;
     /* scan_timer 实际类型需要完整定义——存指针，避开在公共头里 include <uv.h> */
@@ -52,7 +54,7 @@ typedef struct {
     int                  prev_serial_count;
     char                 prev_ncm[64][128];
     int                  prev_ncm_count;
-} device_manager_t;
+};
 
 int  device_manager_init       (device_manager_t *m, uv_loop_t *loop);
 int  device_manager_start      (device_manager_t *m);

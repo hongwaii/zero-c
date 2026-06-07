@@ -51,12 +51,14 @@ int main(void)
      * 不直接戳 struct 字段。device_manager_init 接受 NULL loop 时
      * 不崩但不会真正起 timer；这里把 host 的 loop 传进去，start 之后
      * 扫描 timer 才会真的在 host 的 uv_run(NOWAIT) 上 tick。
-     * 注：plan 里提的 g_app.device_manager 字段目前不在 agent_app_t
-     * 内——P2-T8 接入 panel_devices 时再补该字段并赋值。 */
+     * g_app.device_manager 在 device_manager_start 之后注入，panel_devices
+     * 每帧从这里读 devs[] 实时渲染。 */
     static device_manager_t g_devmgr;
     device_manager_init(&g_devmgr, host_get_uv_loop(ctx));
     device_manager_set_callback(&g_devmgr, NULL, NULL);  /* P2-T8 接入 panel_devices */
     device_manager_start(&g_devmgr);
+    /* 把 device_manager 注入 app——panel_devices 每帧从这里读 dev 列表 */
+    g_app.device_manager = &g_devmgr;
     g_app.uv_loop = host_get_uv_loop(ctx);
 
     main_window_register_panels();

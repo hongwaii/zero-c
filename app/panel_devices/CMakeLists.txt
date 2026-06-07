@@ -7,5 +7,6 @@ target_include_directories(${MODULE_NAME} PUBLIC
 )
 target_link_libraries(${MODULE_NAME} PUBLIC
     app_shell
+    lib_device_manager   # 新加：panel.cpp 直接读 device_manager_t 结构体
     third_imgui
 )

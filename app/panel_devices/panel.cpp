@@ -1,14 +1,16 @@
 /**
  * @file panel_devices.cpp
- * @brief 多模组列表 panel：6 列表格 + 3 行 mock 模组数据。
+ * @brief 多模组列表 panel——订阅 device_manager 实时设备列表。
  *
- * P1 期间数据硬编码；P3 接真 device_manager 后这里订阅多模组状态。
+ * 每帧从 app->device_manager 读 devs[] 渲染表格；dev 数变化时 ImGui 自动重绘。
  */
 #include "panel_devices.h"
 #include "i18n.h"
 #include "imgui.h"
+#include "device_manager.h"
+#include <cstring>
 
-/* 6 列的 i18n key 列表 */
+/* 6 列的 i18n key */
 static const char *kColI18n[] = {
     "devices.col.name",
     "devices.col.com",
@@ -18,35 +20,41 @@ static const char *kColI18n[] = {
     "devices.col.lastseen",
 };
 
-/* 3 行 mock 模组 */
-static const char *kRows[3][6] = {
-    { "MDM-001 (Lab)",     "COM5",     "10.0.0.12",  "23",  "READY",        "2 秒前" },
-    { "MDM-002 (Field-A)", "COM7",     "-",          "11",  "DISCONNECTED", "5 分钟前" },
-    { "MDM-003 (Field-B)", "rndis://", "10.42.0.7",  "19",  "READY",        "刚刚" },
-};
-
 /**
- * @brief 渲染多模组列表：标题 + 6 列表格。
+ * @brief 渲染多模组列表：标题 + 6 列表格（数据来自 device_manager）。
  */
 void panel_devices_render(agent_app_t *app)
 {
-    (void)app;
     ImGui::Text("%s", i18n_get("devices.title"));
     ImGui::Separator();
+
+    device_manager_t *m = (device_manager_t *)app->device_manager;
+    int count = (m != NULL) ? m->dev_count : 0;
+
+    if (count == 0) {
+        ImGui::TextDisabled("暂未发现模组——插上 COM 或 USB-NCM 模组等待 2 秒");
+        return;
+    }
+
     if (ImGui::BeginTable("devices_tbl", 6,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-        /* 表头 */
         for (int i = 0; i < 6; i++) {
             ImGui::TableSetupColumn(i18n_get(kColI18n[i]));
         }
         ImGui::TableHeadersRow();
-        /* 3 行数据 */
-        for (int r = 0; r < 3; r++) {
+
+        for (int r = 0; r < count; r++) {
+            const modem_dev_t *d = &m->devs[r];
             ImGui::TableNextRow();
-            for (int c = 0; c < 6; c++) {
-                ImGui::TableSetColumnIndex(c);
-                ImGui::Text("%s", kRows[r][c]);
-            }
+            ImGui::TableSetColumnIndex(0); ImGui::Text("%s", d->label);
+            ImGui::TableSetColumnIndex(1); ImGui::Text("%s", d->chan_uri);
+            ImGui::TableSetColumnIndex(2); ImGui::Text("%s", d->ipv4[0] ? d->ipv4 : "-");
+            ImGui::TableSetColumnIndex(3); ImGui::Text("%d", d->csq);
+            ImGui::TableSetColumnIndex(4);
+            const char *state_str = (d->state == DEV_STATE_READY) ? "READY"
+                                    : (d->state == DEV_STATE_ERROR) ? "ERROR" : "DISCONNECTED";
+            ImGui::Text("%s", state_str);
+            ImGui::TableSetColumnIndex(5); ImGui::Text("-");
         }
         ImGui::EndTable();
     }

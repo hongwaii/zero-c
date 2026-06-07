@@ -19,6 +19,9 @@ struct cJSON;
 /* libuv loop 前向声明；公共头不引 <uv.h> 避免传递依赖膨胀 */
 struct uv_loop_s;
 
+/* device_manager 前向声明：完整定义在 lib/device_manager/device_manager.h */
+struct device_manager;
+
 /* Theme */
 typedef enum {
     AGENT_THEME_ENGINEERING_BLUE = 0,  /* dark, high-contrast (default) */
@@ -61,6 +64,8 @@ typedef struct agent_app {
     agent_llm_provider_t  *providers;   /* singly-linked list */
     /* libuv loop（host 拥有；panels 通过 app 拿） */
     struct uv_loop_s *uv_loop;
+    /* 多模组 manager（host 启动后由 core/main.cpp 注入） */
+    struct device_manager *device_manager;
 } agent_app_t;
 
 /* Render function signature every panel implements. */

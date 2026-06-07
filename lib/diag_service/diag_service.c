@@ -68,32 +68,37 @@ const diag_state_t *diag_service_get_state(diag_service_t *s, int dev_idx)
 void diag_service_refresh_now(diag_service_t *s)
 {
     if (!s || !s->dm) return;
+    /* 用 6 个独立 buf 给 6 条 AT 命令各自的回调写——
+     * 原 strbuf_t buf 单 buf 复用导致每条 AT 的响应互相覆盖。
+     * static 让 buf 生命周期跨 refresh_now 调用，回调里写时不悬空。 */
+    static strbuf_t bufs[6];
+
     for (int i = 0; i < s->dm->dev_count && i < MAX_DEVS; i++) {
         modem_dev_t *d = &s->dm->devs[i];
         if (d->state != DEV_STATE_READY || !d->at) continue;
 
-        strbuf_t buf;
-        strbuf_init(&buf, 256);
-        strbuf_reset(&buf);
+        for (int j = 0; j < 6; j++) {
+            strbuf_init(&bufs[j], 256);
+            strbuf_reset(&bufs[j]);
+        }
 
-        fetch(d->at, "AT+CGSN", &buf);
-        strncpy(s->states[i].imei, buf.data, sizeof(s->states[i].imei) - 1);
-        fetch(d->at, "AT+CIMI", &buf);
-        strncpy(s->states[i].imsi, buf.data, sizeof(s->states[i].imsi) - 1);
-        fetch(d->at, "AT+CCID", &buf);
-        strncpy(s->states[i].iccid, buf.data, sizeof(s->states[i].iccid) - 1);
-        fetch(d->at, "AT+CSQ", &buf);
-        strncpy(s->states[i].csq, buf.data, sizeof(s->states[i].csq) - 1);
-        fetch(d->at, "AT+CEREG?", &buf);
-        strncpy(s->states[i].cereg, buf.data, sizeof(s->states[i].cereg) - 1);
-        fetch(d->at, "AT+COPS?", &buf);
-        strncpy(s->states[i].cop_operator, buf.data, sizeof(s->states[i].cop_operator) - 1);
+        fetch(d->at, "AT+CGSN",   &bufs[0]);
+        strncpy(s->states[i].imei,         bufs[0].data, sizeof(s->states[i].imei) - 1);
+        fetch(d->at, "AT+CIMI",   &bufs[1]);
+        strncpy(s->states[i].imsi,         bufs[1].data, sizeof(s->states[i].imsi) - 1);
+        fetch(d->at, "AT+CCID",   &bufs[2]);
+        strncpy(s->states[i].iccid,        bufs[2].data, sizeof(s->states[i].iccid) - 1);
+        fetch(d->at, "AT+CSQ",    &bufs[3]);
+        strncpy(s->states[i].csq,          bufs[3].data, sizeof(s->states[i].csq) - 1);
+        fetch(d->at, "AT+CEREG?", &bufs[4]);
+        strncpy(s->states[i].cereg,        bufs[4].data, sizeof(s->states[i].cereg) - 1);
+        fetch(d->at, "AT+COPS?",  &bufs[5]);
+        strncpy(s->states[i].cop_operator, bufs[5].data, sizeof(s->states[i].cop_operator) - 1);
 
         time_t now = time(NULL);
         struct tm *t = localtime(&now);
         strftime(s->states[i].last_update, sizeof(s->states[i].last_update),
                  "%H:%M:%S", t);
         s->states[i].valid = true;
-        strbuf_free(&buf);
     }
 }

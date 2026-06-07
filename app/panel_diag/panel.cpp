@@ -98,15 +98,13 @@ void panel_diag_render(agent_app_t *app)
     }
     ImGui::EndChild();
 
-    /* 输入框 + 发送 */
+    /* 输入框 + 发送：支持回车直接发（ImGuiInputTextFlags_EnterReturnsTrue） */
     static char input_buf[128] = "";
-    ImGui::InputTextWithHint("##at_in", i18n_get("diag.console.placeholder"),
-                             input_buf, sizeof(input_buf));
-    ImGui::SameLine();
-    if (ImGui::Button(i18n_get("diag.console.send"))) {
+    /* 抽出 do_send_at lambda——回车和按钮共用同一段发命令逻辑，避免代码重复 */
+    auto do_send_at = [&]() {
         if (input_buf[0] != '\0') {
             char echo[160];
-            snprintf(echo, sizeof(echo), "> %s", input_buf);
+            std::snprintf(echo, sizeof(echo), "> %s", input_buf);
             hist_push(echo);
             at_session_t *at = (at_session_t *)app->active_at;
             if (at) {
@@ -116,6 +114,15 @@ void panel_diag_render(agent_app_t *app)
             }
             input_buf[0] = '\0';
         }
+    };
+    if (ImGui::InputTextWithHint("##at_in", i18n_get("diag.console.placeholder"),
+                                 input_buf, sizeof(input_buf),
+                                 ImGuiInputTextFlags_EnterReturnsTrue)) {
+        do_send_at();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(i18n_get("diag.console.send"))) {
+        do_send_at();
     }
     ImGui::EndChild();
 
@@ -138,7 +145,11 @@ void panel_diag_render(agent_app_t *app)
         }
     }
 
-    if (!st || !st->valid) {
+    /* 找到 READY 设备就**永远**渲染 7 张卡——空字段显示 "-"——
+     * 之前 st->valid 永远 false（refresh_now 异步且 strbuf 复用），导致连上
+     * COM 口后 UI 仍显示"未连接"，去掉 valid 检查。 */
+    if (!st) {
+        /* 真的没找到 READY 设备 */
         ImGui::TextDisabled("未连接模组（先在多模组面板点连接）");
     } else {
         for (size_t i = 0; i < sizeof(kDiagCards) / sizeof(kDiagCards[0]); i++) {
@@ -152,7 +163,9 @@ void panel_diag_render(agent_app_t *app)
                 ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "%s", value);
             }
         }
-        ImGui::TextDisabled("上次刷新：%s", st->last_update);
+        if (st->last_update[0] != '\0') {
+            ImGui::TextDisabled("上次刷新：%s", st->last_update);
+        }
     }
     ImGui::Separator();
 

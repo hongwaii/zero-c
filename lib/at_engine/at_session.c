@@ -108,6 +108,15 @@ static void complete_current(at_session_t *s, bool ok)
 }
 
 /**
+ * @brief 前向声明：命令超时回调（定义在 try_send_next 之后）。
+ *
+ * 之前 try_send_next 给 uv_timer_start 传 NULL，timer 静默无效；
+ * 改成传 on_cmd_timeout 后必须先前向声明——否则编译器在 try_send_next
+ * 引用 on_cmd_timeout 时报"undeclared identifier"。
+ */
+static void on_cmd_timeout(uv_timer_t *handle);
+
+/**
  * @brief 若空闲且队列非空，发下一条命令并启动超时定时器。
  */
 static void try_send_next(at_session_t *s)
@@ -124,7 +133,9 @@ static void try_send_next(at_session_t *s)
         return;
     }
     s->in_flight = true;
-    uv_timer_start(&s->cmd_timer, NULL, front->timeout_ms, 0);
+    /* 必须传 on_cmd_timeout——NULL 会让 libuv 静默无效，timer 永远不 fire，
+     * 导致某条 AT 卡住后整个队列冻死，UI 看不到新数据。 */
+    uv_timer_start(&s->cmd_timer, on_cmd_timeout, front->timeout_ms, 0);
 }
 
 /**
